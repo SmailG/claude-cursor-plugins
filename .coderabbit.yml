@@ -1,0 +1,25 @@
+version: 2
+language: en-US
+tone_instructions: "Be concise. This is an automated sync PR — focus on manifest correctness and README accuracy only."
+reviews:
+  profile: chill
+  request_changes_workflow: false
+  auto_review:
+    enabled: true
+    drafts: false
+    labels:
+      - sync
+  path_filters:
+    - "!**/skills/**"
+    - "!**/agents/**"
+    - "!**/rules/**"
+    - "!**/.cursor-plugin/**"
+    - "!**/CHANGELOG.md"
+    - "!**/LICENSE"
+  finishing_touches:
+    docstrings:
+      enabled: false
+    unit_tests:
+      enabled: false
+chat:
+  auto_reply: false
