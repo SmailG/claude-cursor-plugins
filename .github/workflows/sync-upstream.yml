@@ -1,0 +1,206 @@
+name: Sync upstream
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 20
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config core.editor true
+
+      - name: Add upstream and fetch
+        run: |
+          git remote add upstream https://github.com/cursor/plugins.git
+          git fetch upstream
+
+      - name: Check for upstream changes
+        id: check
+        run: |
+          UPSTREAM_SHA=$(git rev-parse upstream/main)
+          BASE_SHA=""
+          if [ -f .claude-plugin/.upstream-base ]; then
+            BASE_SHA=$(tr -d '[:space:]' < .claude-plugin/.upstream-base)
+          fi
+          echo "upstream_sha=$UPSTREAM_SHA" >> "$GITHUB_OUTPUT"
+          echo "base_sha=$BASE_SHA" >> "$GITHUB_OUTPUT"
+          if [ "$UPSTREAM_SHA" = "$BASE_SHA" ]; then
+            echo "No upstream changes. Skipping."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Upstream moved: ${BASE_SHA:-<first-run>} → $UPSTREAM_SHA"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Compute branch name
+        if: steps.check.outputs.changed == 'true'
+        id: branch
+        env:
+          BASE_SHA: ${{ steps.check.outputs.base_sha }}
+        run: |
+          HEAD_TITLE=$(git log -1 --format="%s" upstream/main)
+          SLUG=$(printf '%s' "$HEAD_TITLE" \
+            | tr '[:upper:]' '[:lower:]' \
+            | sed 's/[^a-z0-9]/-/g; s/-\+/-/g; s/^-//; s/-$//' \
+            | cut -c1-60)
+
+          if [ -n "$BASE_SHA" ]; then
+            COUNT=$(git log --oneline "${BASE_SHA}..upstream/main" | wc -l | tr -d '[:space:]')
+          else
+            COUNT=1
+          fi
+
+          if [ "$COUNT" -gt 1 ]; then
+            SLUG="${SLUG}-${COUNT}-commits"
+          fi
+
+          echo "branch=sync/$SLUG" >> "$GITHUB_OUTPUT"
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+          # Write pr_title via printf to safely handle special characters
+          printf 'pr_title=chore: sync with cursor/plugins — %s\n' "$HEAD_TITLE" >> "$GITHUB_OUTPUT"
+
+      - name: Create sync branch and rebase
+        if: steps.check.outputs.changed == 'true'
+        env:
+          BRANCH: ${{ steps.branch.outputs.branch }}
+        run: |
+          git checkout -b "$BRANCH"
+
+          set +e
+          git rebase upstream/main
+          REBASE_EXIT=$?
+          set -e
+
+          if [ "$REBASE_EXIT" -ne 0 ]; then
+            if [ -d .git/rebase-apply ] || [ -d .git/rebase-merge ]; then
+              # README.md: take upstream version then rebuild from our template
+              git checkout --ours README.md 2>/dev/null || true
+              node scripts/rebuild-readme.mjs
+              git add README.md
+
+              # All other conflicts: upstream wins
+              git diff --name-only --diff-filter=U | while IFS= read -r f; do
+                echo "  resolving conflict (upstream): $f"
+                git checkout --ours "$f"
+                git add "$f"
+              done
+
+              git rebase --continue
+            else
+              echo "Rebase failed in unexpected state"
+              exit 1
+            fi
+          fi
+
+      - name: Sync manifests
+        if: steps.check.outputs.changed == 'true'
+        run: node scripts/sync-manifests.mjs
+
+      - name: Rebuild README
+        if: steps.check.outputs.changed == 'true'
+        run: node scripts/rebuild-readme.mjs
+
+      - name: Update upstream base SHA
+        if: steps.check.outputs.changed == 'true'
+        env:
+          UPSTREAM_SHA: ${{ steps.check.outputs.upstream_sha }}
+        run: printf '%s\n' "$UPSTREAM_SHA" > .claude-plugin/.upstream-base
+
+      - name: Amend fork commit
+        if: steps.check.outputs.changed == 'true'
+        run: git add -A && git commit --amend --no-edit
+
+      - name: Push sync branch
+        if: steps.check.outputs.changed == 'true'
+        env:
+          BRANCH: ${{ steps.branch.outputs.branch }}
+        run: git push --force-with-lease origin "$BRANCH"
+
+      - name: Ensure sync label exists
+        if: steps.check.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create sync \
+            --color 0075ca \
+            --description "Automated upstream sync" \
+            2>/dev/null || true
+
+      - name: Close stale sync PRs
+        if: steps.check.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr list \
+            --label sync \
+            --state open \
+            --json number,headRefName \
+            --jq '.[] | select(.headRefName | startswith("sync/")) | .number' \
+            | xargs -r -I{} gh pr close {} \
+              --comment "Superseded by newer sync PR." \
+          || true
+
+      - name: Create pull request
+        if: steps.check.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_TITLE: ${{ steps.branch.outputs.pr_title }}
+          BRANCH: ${{ steps.branch.outputs.branch }}
+          BASE_SHA: ${{ steps.check.outputs.base_sha }}
+        run: |
+          if [ -n "$BASE_SHA" ]; then
+            COMMIT_LOG=$(git log --oneline "${BASE_SHA}..upstream/main")
+          else
+            COMMIT_LOG=$(git log --oneline upstream/main | head -10)
+          fi
+
+          {
+            printf '## Upstream changes\n\n'
+            printf '%s\n' "$COMMIT_LOG"
+            printf '\n---\n'
+            printf '_Automated sync via [sync-upstream workflow](.github/workflows/sync-upstream.yml)_\n'
+          } > /tmp/pr-body.md
+
+          gh pr create \
+            --title "$PR_TITLE" \
+            --body-file /tmp/pr-body.md \
+            --label sync \
+            --head "$BRANCH" \
+            --base main \
+          || true
+
+          gh pr merge --auto --rebase \
+            --subject "$PR_TITLE" \
+          || true
+
+      - name: Summary
+        if: steps.check.outputs.changed == 'true'
+        env:
+          BRANCH: ${{ steps.branch.outputs.branch }}
+          UPSTREAM_SHA: ${{ steps.check.outputs.upstream_sha }}
+          COUNT: ${{ steps.branch.outputs.count }}
+        run: |
+          {
+            echo "### Sync PR created"
+            echo "- **Branch:** $BRANCH"
+            echo "- **Upstream SHA:** $UPSTREAM_SHA"
+            echo "- **Commits synced:** $COUNT"
+          } >> "$GITHUB_STEP_SUMMARY"
