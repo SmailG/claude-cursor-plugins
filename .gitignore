@@ -13,6 +13,7 @@ Thumbs.db
 .env
 .env.local
 .env.*.local
+docs/
 
 # Node modules (for plugins with JS/TS)
 node_modules/
@@ -26,6 +27,8 @@ venv/
 # Local plugin settings
 *.local.md
 *.local.json
+.specstory/
+
 
 # Build outputs
 dist/

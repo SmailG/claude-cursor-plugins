@@ -92,7 +92,59 @@ for (const entry of marketplace.plugins ?? []) {
   }
 }
 
-// 3. Report results
+// 3. Validate .claude-plugin/marketplace.json and per-plugin manifests
+const claudeMarketplacePath = resolve(root, ".claude-plugin/marketplace.json");
+
+if (!existsSync(claudeMarketplacePath)) {
+  fail(".claude-plugin/marketplace.json not found");
+} else {
+  const cm = loadJSON(claudeMarketplacePath);
+
+  if (!cm.name || typeof cm.name !== "string") {
+    fail('.claude-plugin/marketplace.json: missing or invalid "name"');
+  }
+  if (!Array.isArray(cm.plugins)) {
+    fail('.claude-plugin/marketplace.json: "plugins" must be an array');
+  }
+
+  for (const entry of cm.plugins ?? []) {
+    const pluginDir = resolve(root, entry.source);
+    const claudePluginJsonPath = resolve(pluginDir, ".claude-plugin/plugin.json");
+
+    if (!existsSync(pluginDir)) {
+      fail(
+        `Claude plugin "${entry.name}": source directory "${entry.source}" does not exist`
+      );
+      continue;
+    }
+
+    if (!existsSync(claudePluginJsonPath)) {
+      fail(
+        `Claude plugin "${entry.name}": missing .claude-plugin/plugin.json in "${entry.source}"`
+      );
+      continue;
+    }
+
+    const p = loadJSON(claudePluginJsonPath);
+
+    if (!p.name || typeof p.name !== "string") {
+      fail(`Claude plugin "${entry.name}": plugin.json missing "name"`);
+    }
+    if (!p.description || typeof p.description !== "string") {
+      fail(`Claude plugin "${entry.name}": plugin.json missing "description"`);
+    }
+    if (!p.author?.name) {
+      fail(`Claude plugin "${entry.name}": plugin.json missing "author.name"`);
+    }
+    if (p.name && p.name !== entry.name) {
+      fail(
+        `Claude plugin "${entry.name}": plugin.json name "${p.name}" does not match marketplace entry`
+      );
+    }
+  }
+}
+
+// 4. Report results
 if (errors > 0) {
   console.error(`\nValidation failed with ${errors} error(s).`);
   process.exit(1);
