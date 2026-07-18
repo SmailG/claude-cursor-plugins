@@ -85,35 +85,40 @@ jobs:
           # Write pr_title via printf to safely handle special characters
           printf 'pr_title=chore: sync with cursor/plugins — %s\n' "$HEAD_TITLE" >> "$GITHUB_OUTPUT"
 
-      - name: Create sync branch and rebase
+      - name: Create sync branch and merge upstream
         if: steps.check.outputs.changed == 'true'
         env:
           BRANCH: ${{ steps.branch.outputs.branch }}
         run: |
           git checkout -b "$BRANCH"
 
+          # Merge (not rebase) so this branch stays a fast-forward-friendly
+          # descendant of main. Rebasing here rewrites main's own commits
+          # onto a new upstream tip, which desyncs their ancestry from main
+          # and makes the resulting PR unmergeable the moment main has any
+          # commit that didn't come from a previous sync (see #3).
           set +e
-          git rebase upstream/main
-          REBASE_EXIT=$?
+          git merge --no-edit upstream/main
+          MERGE_EXIT=$?
           set -e
 
-          if [ "$REBASE_EXIT" -ne 0 ]; then
-            if [ -d .git/rebase-apply ] || [ -d .git/rebase-merge ]; then
+          if [ "$MERGE_EXIT" -ne 0 ]; then
+            if [ -f .git/MERGE_HEAD ]; then
               # README.md: take upstream version then rebuild from our template
-              git checkout --ours README.md 2>/dev/null || true
+              git checkout --theirs README.md 2>/dev/null || true
               node scripts/rebuild-readme.mjs
               git add README.md
 
               # All other conflicts: upstream wins
               git diff --name-only --diff-filter=U | while IFS= read -r f; do
                 echo "  resolving conflict (upstream): $f"
-                git checkout --ours "$f"
+                git checkout --theirs "$f"
                 git add "$f"
               done
 
-              git rebase --continue
+              git commit --no-edit
             else
-              echo "Rebase failed in unexpected state"
+              echo "Merge failed in unexpected state"
               exit 1
             fi
           fi
@@ -132,7 +137,7 @@ jobs:
           UPSTREAM_SHA: ${{ steps.check.outputs.upstream_sha }}
         run: printf '%s\n' "$UPSTREAM_SHA" > .claude-plugin/.upstream-base
 
-      - name: Amend fork commit
+      - name: Amend sync commit
         if: steps.check.outputs.changed == 'true'
         run: git add -A && git commit --amend --no-edit
 
@@ -200,7 +205,10 @@ jobs:
             exit 1
           fi
 
-          gh pr merge --auto --rebase \
+          # --merge, not --rebase: the branch contains a real merge commit
+          # (from merging upstream/main above), and GitHub's rebase-merge
+          # refuses branches with merge commits.
+          gh pr merge --auto --merge \
             --subject "$PR_TITLE" \
           || echo "::warning::Could not enable auto-merge for $BRANCH. Check that 'Allow auto-merge' is enabled in repo settings, then merge the PR manually."
 
