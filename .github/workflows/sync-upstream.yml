@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  issues: write
   pull-requests: write
 
 jobs:
@@ -142,7 +143,7 @@ jobs:
           gh label create sync \
             --color 0075ca \
             --description "Automated upstream sync" \
-            2>/dev/null || true
+            --force
 
       - name: Close stale sync PRs
         if: steps.check.outputs.changed == 'true'
@@ -187,9 +188,14 @@ jobs:
             --base main \
           || true
 
+          if ! gh pr view "$BRANCH" --json number >/dev/null 2>&1; then
+            echo "::error::gh pr create failed and no pull request exists for $BRANCH — upstream sync did not land."
+            exit 1
+          fi
+
           gh pr merge --auto --rebase \
             --subject "$PR_TITLE" \
-          || true
+          || echo "::warning::Could not enable auto-merge for $BRANCH. Check that 'Allow auto-merge' is enabled in repo settings, then merge the PR manually."
 
       - name: Summary
         if: steps.check.outputs.changed == 'true'
