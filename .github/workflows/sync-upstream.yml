@@ -13,6 +13,13 @@ permissions:
 jobs:
   sync:
     runs-on: ubuntu-latest
+    env:
+      # Without this, `gh` resolves the target repo from git remotes and
+      # prefers a remote named "upstream" over "origin" — since this job
+      # adds an `upstream` remote pointing at cursor/plugins, every
+      # unscoped `gh` call below would otherwise silently target that
+      # repo (where this token has no access) instead of this fork.
+      GH_REPO: ${{ github.repository }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
