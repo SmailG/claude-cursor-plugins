@@ -1,0 +1,8 @@
+{
+  "name": "google-calendar",
+  "description": "Connect Cursor to Google Calendar via Google's remote MCP server — list calendars, search events, and create or update meetings.",
+  "author": {
+    "name": "Cursor",
+    "email": "plugins@cursor.com"
+  }
+}

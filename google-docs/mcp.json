@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "google-docs": {
+      "type": "http",
+      "url": "https://docsmcp.googleapis.com/mcp/v1"
+    }
+  }
+}

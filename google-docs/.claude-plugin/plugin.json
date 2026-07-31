@@ -1,0 +1,8 @@
+{
+  "name": "google-docs",
+  "description": "Connect Cursor to Google Docs via Google's remote MCP server — read and update documents.",
+  "author": {
+    "name": "Cursor",
+    "email": "plugins@cursor.com"
+  }
+}

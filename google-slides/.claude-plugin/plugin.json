@@ -1,0 +1,8 @@
+{
+  "name": "google-slides",
+  "description": "Connect Cursor to Google Slides via Google's remote MCP server — read and update presentations.",
+  "author": {
+    "name": "Cursor",
+    "email": "plugins@cursor.com"
+  }
+}
