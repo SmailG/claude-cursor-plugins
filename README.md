@@ -38,6 +38,12 @@ You can install as many plugins as you need:
 | `cursor-sdk` | [Cursor SDK](cursor-sdk/) | Cursor | Developer Tools | Build apps, scripts, CI pipelines, and automations on top of the Cursor TypeScript SDK (@cursor/sdk) — runtime selection, auth, streaming, MCP, error handling, and ready-to-extend integration patterns. |
 | `orchestrate` | [Orchestrate](orchestrate/) | Cursor | Developer Tools | Fan large tasks out across parallel Cursor cloud agents with planners, workers, verifiers, and structured handoffs. |
 | `pstack` | [pstack](pstack/) | Lauren Tan | Developer Tools | if you want to go fast, go deep first. pstack helps you write less, but higher quality code. rigorous agent workflows you can parallelize with confidence. |
+| `gmail` | [Gmail](gmail/) | Cursor | Developer Tools | Connect Cursor to Gmail via Google's remote MCP server — search, read, draft, label, and manage email. |
+| `google-calendar` | [Google Calendar](google-calendar/) | Cursor | Developer Tools | Connect Cursor to Google Calendar via Google's remote MCP server — list calendars, search events, and create or update meetings. |
+| `google-docs` | [Google Docs](google-docs/) | Cursor | Developer Tools | Connect Cursor to Google Docs via Google's remote MCP server — read and update documents. |
+| `google-drive` | [Google Drive](google-drive/) | Cursor | Developer Tools | Connect Cursor to Google Drive via Google's remote MCP server — search, read, create, share, and manage files. |
+| `google-sheets` | [Google Sheets](google-sheets/) | Cursor | Developer Tools | Connect Cursor to Google Sheets via Google's remote MCP server — read spreadsheets, update values and formulas. |
+| `google-slides` | [Google Slides](google-slides/) | Cursor | Developer Tools | Connect Cursor to Google Slides via Google's remote MCP server — read and update presentations. |
 
 ## What changed from upstream
 
