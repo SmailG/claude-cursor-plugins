@@ -70,8 +70,31 @@
         "description": {
           "type": "string",
           "description": "Short description of the plugin."
+        },
+        "minClientVersions": {
+          "$ref": "#/$defs/minClientVersions",
+          "description": "Minimum client versions required to install the plugin, keyed by client identifier."
         }
       }
+    },
+    "minClientVersions": {
+      "type": "object",
+      "minProperties": 1,
+      "properties": {
+        "cursor": {
+          "$ref": "#/$defs/semver",
+          "description": "Minimum Cursor version required to install the plugin (e.g. \"3.13.0\")."
+        }
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/semver",
+        "description": "Minimum version required for another client identifier."
+      }
+    },
+    "semver": {
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?$",
+      "description": "Strict semantic version \"X.Y.Z\" with an optional prerelease suffix."
     }
   }
 }
