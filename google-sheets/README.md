@@ -32,7 +32,7 @@ Auth is OAuth 2.0 against Google. Cursor prompts for Google sign-in when the plu
 - Google MCP setup: https://developers.google.com/workspace/sheets/api/guides/configure-mcp-server
 - Workspace MCP overview: https://developers.google.com/workspace/guides/configure-mcp-servers
 
-Logo is the official Google Sheets product icon:
+Logo is the official Google Sheets product icon, placed on a white tile with padding so it reads well in the Cursor UI:
 https://www.gstatic.com/images/branding/productlogos/sheets_2026/v1/192px.svg
 
 ## License
