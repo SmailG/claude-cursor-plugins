@@ -1,8 +1,0 @@
-{
-  "name": "gmail",
-  "description": "Connect Cursor to Gmail via Google's remote MCP server — search, read, draft, label, and manage email.",
-  "author": {
-    "name": "Cursor",
-    "email": "plugins@cursor.com"
-  }
-}

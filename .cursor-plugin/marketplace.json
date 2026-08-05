@@ -75,33 +75,28 @@
     },
     {
       "name": "gmail",
-      "source": "gmail",
+      "source": "third_party/gmail",
       "description": "Connect Cursor to Gmail via Google's remote MCP server — search, read, draft, label, and manage email."
     },
     {
       "name": "google-drive",
-      "source": "google-drive",
+      "source": "third_party/google-drive",
       "description": "Connect Cursor to Google Drive via Google's remote MCP server — search, read, create, share, and manage files."
     },
     {
       "name": "google-calendar",
-      "source": "google-calendar",
+      "source": "third_party/google-calendar",
       "description": "Connect Cursor to Google Calendar via Google's remote MCP server — list calendars, search events, and create or update meetings."
     },
     {
-      "name": "google-docs",
-      "source": "google-docs",
-      "description": "Connect Cursor to Google Docs via Google's remote MCP server — read and update documents."
+      "name": "gong",
+      "source": "third_party/gong",
+      "description": "Gong MCP integration for revenue intelligence — account summaries, deal insights, and call briefs."
     },
     {
-      "name": "google-sheets",
-      "source": "google-sheets",
-      "description": "Connect Cursor to Google Sheets via Google's remote MCP server — read spreadsheets, update values and formulas."
-    },
-    {
-      "name": "google-slides",
-      "source": "google-slides",
-      "description": "Connect Cursor to Google Slides via Google's remote MCP server — read and update presentations."
+      "name": "salesforce",
+      "source": "third_party/salesforce",
+      "description": "Connect Cursor to Salesforce via Salesforce Hosted MCP — query, search, create, update, and traverse records in your org."
     }
   ]
 }

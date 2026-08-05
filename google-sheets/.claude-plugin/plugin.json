@@ -1,8 +1,0 @@
-{
-  "name": "google-sheets",
-  "description": "Connect Cursor to Google Sheets via Google's remote MCP server — read spreadsheets, update values and formulas.",
-  "author": {
-    "name": "Cursor",
-    "email": "plugins@cursor.com"
-  }
-}
