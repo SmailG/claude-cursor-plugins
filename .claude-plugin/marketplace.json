@@ -135,66 +135,6 @@
       "author": {
         "name": "Lauren Tan"
       }
-    },
-    {
-      "name": "gmail",
-      "description": "Connect Cursor to Gmail via Google's remote MCP server — search, read, draft, label, and manage email.",
-      "source": "./gmail",
-      "category": "developer-tools",
-      "author": {
-        "name": "Cursor",
-        "email": "plugins@cursor.com"
-      }
-    },
-    {
-      "name": "google-calendar",
-      "description": "Connect Cursor to Google Calendar via Google's remote MCP server — list calendars, search events, and create or update meetings.",
-      "source": "./google-calendar",
-      "category": "developer-tools",
-      "author": {
-        "name": "Cursor",
-        "email": "plugins@cursor.com"
-      }
-    },
-    {
-      "name": "google-docs",
-      "description": "Connect Cursor to Google Docs via Google's remote MCP server — read and update documents.",
-      "source": "./google-docs",
-      "category": "developer-tools",
-      "author": {
-        "name": "Cursor",
-        "email": "plugins@cursor.com"
-      }
-    },
-    {
-      "name": "google-drive",
-      "description": "Connect Cursor to Google Drive via Google's remote MCP server — search, read, create, share, and manage files.",
-      "source": "./google-drive",
-      "category": "developer-tools",
-      "author": {
-        "name": "Cursor",
-        "email": "plugins@cursor.com"
-      }
-    },
-    {
-      "name": "google-sheets",
-      "description": "Connect Cursor to Google Sheets via Google's remote MCP server — read spreadsheets, update values and formulas.",
-      "source": "./google-sheets",
-      "category": "developer-tools",
-      "author": {
-        "name": "Cursor",
-        "email": "plugins@cursor.com"
-      }
-    },
-    {
-      "name": "google-slides",
-      "description": "Connect Cursor to Google Slides via Google's remote MCP server — read and update presentations.",
-      "source": "./google-slides",
-      "category": "developer-tools",
-      "author": {
-        "name": "Cursor",
-        "email": "plugins@cursor.com"
-      }
     }
   ]
 }

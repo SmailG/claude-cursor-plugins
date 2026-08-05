@@ -1,8 +1,0 @@
-{
-  "name": "google-drive",
-  "description": "Connect Cursor to Google Drive via Google's remote MCP server — search, read, create, share, and manage files.",
-  "author": {
-    "name": "Cursor",
-    "email": "plugins@cursor.com"
-  }
-}
