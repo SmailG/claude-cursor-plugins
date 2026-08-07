@@ -97,6 +97,16 @@
       "name": "salesforce",
       "source": "third_party/salesforce",
       "description": "Connect Cursor to Salesforce via Salesforce Hosted MCP — query, search, create, update, and traverse records in your org."
+    },
+    {
+      "name": "playwright",
+      "source": "third_party/playwright",
+      "description": "Drive a real browser for agents — navigate pages, click and fill elements, take snapshots and screenshots, and run end-to-end checks — via Microsoft's Playwright MCP server."
+    },
+    {
+      "name": "github",
+      "source": "third_party/github",
+      "description": "Connect Cursor to GitHub — repositories, issues, pull requests, code search, and Actions — via GitHub's official remote MCP server."
     }
   ]
 }
