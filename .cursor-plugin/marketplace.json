@@ -107,6 +107,31 @@
       "name": "github",
       "source": "third_party/github",
       "description": "Connect Cursor to GitHub — repositories, issues, pull requests, code search, and Actions — via GitHub's official remote MCP server."
+    },
+    {
+      "name": "apollo-io",
+      "source": "third_party/apollo-io",
+      "description": "Connect Cursor to Apollo.io — prospect search, contact and company enrichment, lists, sequences, and one-off emails — via Apollo's official remote MCP server."
+    },
+    {
+      "name": "ashby",
+      "source": "third_party/ashby",
+      "description": "Connect Cursor to Ashby — search candidates and jobs, prep for interviews, manage pipeline tasks, and take recruiting actions — via Ashby's official remote MCP server."
+    },
+    {
+      "name": "zoom",
+      "source": "third_party/zoom",
+      "description": "Zoom MCP integration — search meetings and recordings, pull summaries and transcripts, and work with Zoom Docs."
+    },
+    {
+      "name": "x",
+      "source": "third_party/x",
+      "description": "Read-only access to the X API — search posts and users, read timelines and mentions, and pull trends and news — via X's official hosted MCP server."
+    },
+    {
+      "name": "clay",
+      "source": "third_party/clay",
+      "description": "Connect Cursor to Clay — find and enrich people and companies across 150+ data providers, run AI research agents, and trigger your team's approved Clay workflows — via Clay's official hosted MCP server."
     }
   ]
 }
