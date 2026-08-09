@@ -119,6 +119,18 @@
       "description": "Connect Cursor to Ashby — search candidates and jobs, prep for interviews, manage pipeline tasks, and take recruiting actions — via Ashby's official remote MCP server."
     },
     {
+      "name": "hubspot",
+      "source": "third_party/hubspot",
+      "description": "Connect Cursor to HubSpot CRM — search and update contacts, companies, deals, and tickets; work with activities, conversations, and marketing emails — via HubSpot's official remote MCP server."
+    },
+    {
+      "name": "intercom",
+      "source": "third_party/intercom",
+      "description": "Connect Cursor to Intercom — search conversations and contacts, look up companies, and manage Help Center articles — via Intercom's official remote MCP server."
+    },
+
+
+    {
       "name": "zoom",
       "source": "third_party/zoom",
       "description": "Zoom MCP integration — search meetings and recordings, pull summaries and transcripts, and work with Zoom Docs."
@@ -132,6 +144,18 @@
       "name": "clay",
       "source": "third_party/clay",
       "description": "Connect Cursor to Clay — find and enrich people and companies across 150+ data providers, run AI research agents, and trigger your team's approved Clay workflows — via Clay's official hosted MCP server."
+    },
+    {
+      "name": "circleback",
+      "source": "third_party/circleback",
+      "description": "Connect Cursor to Circleback — search meetings, transcripts, action items, calendar events, and emails, and look up people and companies — via Circleback's official remote MCP server."
+    },
+    {
+      "name": "docusign",
+      "source": "third_party/docusign",
+      "description": "Connect Cursor to Docusign — work with eSignature envelopes and templates, Maestro workflows, and Navigator agreements — via Docusign's official remote MCP server (beta)."
     }
   ]
 }
+
+
