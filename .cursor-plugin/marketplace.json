@@ -154,6 +154,11 @@
       "name": "docusign",
       "source": "third_party/docusign",
       "description": "Connect Cursor to Docusign — work with eSignature envelopes and templates, Maestro workflows, and Navigator agreements — via Docusign's official remote MCP server (beta)."
+    },
+    {
+      "name": "navan",
+      "source": "third_party/navan",
+      "description": "Connect Cursor to Navan — query expenses, analyze travel bookings, check policies and approvals, and manage cards — via Navan's official remote MCP server."
     }
   ]
 }
