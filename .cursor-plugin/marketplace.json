@@ -21,7 +21,7 @@
     {
       "name": "cursor-team-kit",
       "source": "cursor-team-kit",
-      "description": "Internal team workflows used by Cursor developers for CI, code review, shipping, local automation, and verification."
+      "description": "Internal team workflows for CI, code review, shipping, local automation, and verification."
     },
     {
       "name": "thermos",
@@ -31,7 +31,7 @@
     {
       "name": "create-plugin",
       "source": "create-plugin",
-      "description": "Scaffold and validate new Cursor plugins."
+      "description": "Scaffold and validate new agent plugins."
     },
     {
       "name": "ralph-loop",
@@ -41,7 +41,7 @@
     {
       "name": "agent-compatibility",
       "source": "agent-compatibility",
-      "description": "CLI-backed repo compatibility scans plus Cursor agents that audit startup, validation, and docs against reality."
+      "description": "CLI-backed repo compatibility scans plus agents that audit startup, validation, and docs against reality."
     },
     {
       "name": "cli-for-agent",
@@ -51,12 +51,12 @@
     {
       "name": "pr-review-canvas",
       "source": "pr-review-canvas",
-      "description": "Render PR diffs as interactive Cursor Canvases organized for reviewer comprehension — groups changes by importance, separates boilerplate from core logic, and highlights tricky or unexpected code."
+      "description": "Render PR diffs as interactive canvases organized for reviewer comprehension — groups changes by importance, separates boilerplate from core logic, and highlights tricky or unexpected code."
     },
     {
       "name": "docs-canvas",
       "source": "docs-canvas",
-      "description": "Render documentation — architecture notes, API references, runbooks, and codebase walkthroughs — as a navigable Cursor Canvas with sections, table of contents, diagrams, and cross-references."
+      "description": "Render documentation — architecture notes, API references, runbooks, and codebase walkthroughs — as a navigable canvas with sections, table of contents, diagrams, and cross-references."
     },
     {
       "name": "cursor-sdk",
@@ -66,7 +66,7 @@
     {
       "name": "orchestrate",
       "source": "orchestrate",
-      "description": "Fan large tasks out across parallel Cursor cloud agents with planners, workers, verifiers, and structured handoffs."
+      "description": "Fan large tasks out across parallel cloud agents with planners, workers, verifiers, and structured handoffs."
     },
     {
       "name": "pstack",
@@ -76,17 +76,17 @@
     {
       "name": "gmail",
       "source": "third_party/gmail",
-      "description": "Connect Cursor to Gmail via Google's remote MCP server — search, read, draft, label, and manage email."
+      "description": "Connect to Gmail via Google's remote MCP server — search, read, draft, label, and manage email."
     },
     {
       "name": "google-drive",
       "source": "third_party/google-drive",
-      "description": "Connect Cursor to Google Drive via Google's remote MCP server — search, read, create, share, and manage files."
+      "description": "Connect to Google Drive via Google's remote MCP server — search, read, create, share, and manage files."
     },
     {
       "name": "google-calendar",
       "source": "third_party/google-calendar",
-      "description": "Connect Cursor to Google Calendar via Google's remote MCP server — list calendars, search events, and create or update meetings."
+      "description": "Connect to Google Calendar via Google's remote MCP server — list calendars, search events, and create or update meetings."
     },
     {
       "name": "gong",
@@ -96,7 +96,7 @@
     {
       "name": "salesforce",
       "source": "third_party/salesforce",
-      "description": "Connect Cursor to Salesforce via Salesforce Hosted MCP — query, search, create, update, and traverse records in your org."
+      "description": "Connect to Salesforce via Salesforce Hosted MCP — query, search, create, update, and traverse records in your org."
     },
     {
       "name": "playwright",
@@ -106,27 +106,27 @@
     {
       "name": "github",
       "source": "third_party/github",
-      "description": "Connect Cursor to GitHub — repositories, issues, pull requests, code search, and Actions — via GitHub's official remote MCP server."
+      "description": "Connect to GitHub — repositories, issues, pull requests, code search, and Actions — via GitHub's official remote MCP server."
     },
     {
       "name": "apollo-io",
       "source": "third_party/apollo-io",
-      "description": "Connect Cursor to Apollo.io — prospect search, contact and company enrichment, lists, sequences, and one-off emails — via Apollo's official remote MCP server."
+      "description": "Connect to Apollo.io — prospect search, contact and company enrichment, lists, sequences, and one-off emails — via Apollo's official remote MCP server."
     },
     {
       "name": "ashby",
       "source": "third_party/ashby",
-      "description": "Connect Cursor to Ashby — search candidates and jobs, prep for interviews, manage pipeline tasks, and take recruiting actions — via Ashby's official remote MCP server."
+      "description": "Connect to Ashby — search candidates and jobs, prep for interviews, manage pipeline tasks, and take recruiting actions — via Ashby's official remote MCP server."
     },
     {
       "name": "hubspot",
       "source": "third_party/hubspot",
-      "description": "Connect Cursor to HubSpot CRM — search and update contacts, companies, deals, and tickets; work with activities, conversations, and marketing emails — via HubSpot's official remote MCP server."
+      "description": "Connect to HubSpot CRM — search and update contacts, companies, deals, and tickets; work with activities, conversations, and marketing emails — via HubSpot's official remote MCP server."
     },
     {
       "name": "intercom",
       "source": "third_party/intercom",
-      "description": "Connect Cursor to Intercom — search conversations and contacts, look up companies, and manage Help Center articles — via Intercom's official remote MCP server."
+      "description": "Connect to Intercom — search conversations and contacts, look up companies, and manage Help Center articles — via Intercom's official remote MCP server."
     },
 
 
@@ -143,22 +143,22 @@
     {
       "name": "clay",
       "source": "third_party/clay",
-      "description": "Connect Cursor to Clay — find and enrich people and companies across 150+ data providers, run AI research agents, and trigger your team's approved Clay workflows — via Clay's official hosted MCP server."
+      "description": "Connect to Clay — find and enrich people and companies across 150+ data providers, run AI research agents, and trigger your team's approved Clay workflows — via Clay's official hosted MCP server."
     },
     {
       "name": "circleback",
       "source": "third_party/circleback",
-      "description": "Connect Cursor to Circleback — search meetings, transcripts, action items, calendar events, and emails, and look up people and companies — via Circleback's official remote MCP server."
+      "description": "Connect to Circleback — search meetings, transcripts, action items, calendar events, and emails, and look up people and companies — via Circleback's official remote MCP server."
     },
     {
       "name": "docusign",
       "source": "third_party/docusign",
-      "description": "Connect Cursor to Docusign — work with eSignature envelopes and templates, Maestro workflows, and Navigator agreements — via Docusign's official remote MCP server (beta)."
+      "description": "Connect to Docusign — work with eSignature envelopes and templates, Maestro workflows, and Navigator agreements — via Docusign's official remote MCP server (beta)."
     },
     {
       "name": "navan",
       "source": "third_party/navan",
-      "description": "Connect Cursor to Navan — query expenses, analyze travel bookings, check policies and approvals, and manage cards — via Navan's official remote MCP server."
+      "description": "Connect to Navan — query expenses, analyze travel bookings, check policies and approvals, and manage cards — via Navan's official remote MCP server."
     }
   ]
 }
