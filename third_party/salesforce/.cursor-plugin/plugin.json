@@ -2,7 +2,7 @@
   "name": "salesforce",
   "displayName": "Salesforce",
   "version": "1.0.0",
-  "description": "Connect Cursor to Salesforce via Salesforce Hosted MCP — query, search, create, update, and traverse records in your org.",
+  "description": "Connect to Salesforce via Salesforce Hosted MCP — query, search, create, update, and traverse records in your org.",
   "author": {
     "name": "Cursor",
     "email": "plugins@cursor.com"
@@ -36,7 +36,7 @@
       "CLIENT_ID": {
         "type": "string",
         "title": "Salesforce Consumer Key",
-        "description": "Consumer Key of the External Client App you created for Cursor (Setup → External Client App Manager → your app → Settings → Consumer Key and Secret)."
+        "description": "Consumer Key of the External Client App you created for this integration (Setup → External Client App Manager → your app → Settings → Consumer Key and Secret)."
       }
     },
     "required": [
