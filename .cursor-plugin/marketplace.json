@@ -159,6 +159,11 @@
       "name": "navan",
       "source": "third_party/navan",
       "description": "Connect to Navan — query expenses, analyze travel bookings, check policies and approvals, and manage cards — via Navan's official remote MCP server."
+    },
+    {
+      "name": "profound",
+      "source": "third_party/profound",
+      "description": "Connect to Profound — retrieve AI visibility, sentiment, and citation reports, access agent analytics, and build or run Profound Agents — via Profound's official hosted MCP server."
     }
   ]
 }
