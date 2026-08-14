@@ -1,11 +1,11 @@
 {
   "name": "x",
   "displayName": "X",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "minClientVersions": {
     "cursor": "3.13.0"
   },
-  "description": "Read-only access to the X API — search posts and users, read timelines and mentions, and pull trends and news — via X's official hosted MCP server.",
+  "description": "Connect to the X API — search posts and users, read timelines and mentions, pull trends and news, and manage lists, bookmarks, blocks, and mutes — via X's official hosted MCP server.",
   "author": {
     "name": "Cursor",
     "email": "plugins@cursor.com"
@@ -21,6 +21,8 @@
     "search",
     "trends",
     "news",
+    "lists",
+    "bookmarks",
     "social",
     "mcp"
   ],
@@ -31,18 +33,5 @@
     "search",
     "mcp"
   ],
-  "variables": {
-    "type": "object",
-    "properties": {
-      "X_BEARER_TOKEN": {
-        "type": "string",
-        "title": "X app-only Bearer token",
-        "description": "App-only Bearer token from your app's Keys and tokens page in the X Developer Portal (https://developer.x.com). Grants read-only access to the X API with no user context."
-      }
-    },
-    "required": [
-      "X_BEARER_TOKEN"
-    ]
-  },
   "mcpServers": "./mcp.json"
 }

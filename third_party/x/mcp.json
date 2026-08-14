@@ -3,8 +3,24 @@
     "x": {
       "type": "http",
       "url": "https://api.x.com/mcp",
-      "headers": {
-        "Authorization": "Bearer ${X_BEARER_TOKEN}"
+      "auth": {
+        "CLIENT_ID": "NGdZYmo4VVp2T1BnRG55NlExOGQ6MTpjaQ",
+        "scopes": [
+          "tweet.read",
+          "users.read",
+          "follows.read",
+          "space.read",
+          "mute.read",
+          "like.read",
+          "list.read",
+          "list.write",
+          "block.read",
+          "block.write",
+          "bookmark.read",
+          "bookmark.write",
+          "billing.write",
+          "offline.access"
+        ]
       }
     }
   }
