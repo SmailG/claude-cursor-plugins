@@ -109,11 +109,6 @@
       "description": "Connect to GitHub — repositories, issues, pull requests, code search, and Actions — via GitHub's official remote MCP server."
     },
     {
-      "name": "apollo-io",
-      "source": "third_party/apollo-io",
-      "description": "Connect to Apollo.io — prospect search, contact and company enrichment, lists, sequences, and one-off emails — via Apollo's official remote MCP server."
-    },
-    {
       "name": "ashby",
       "source": "third_party/ashby",
       "description": "Connect to Ashby — search candidates and jobs, prep for interviews, manage pipeline tasks, and take recruiting actions — via Ashby's official remote MCP server."
@@ -164,6 +159,11 @@
       "name": "profound",
       "source": "third_party/profound",
       "description": "Connect to Profound — retrieve AI visibility, sentiment, and citation reports, access agent analytics, and build or run Profound Agents — via Profound's official hosted MCP server."
+    },
+    {
+      "name": "juicebox",
+      "source": "third_party/juicebox",
+      "description": "Connect to Juicebox — query recruiting analytics, search shortlists, look up projects, and create or manage sourcing agents — via Juicebox's official remote MCP server."
     }
   ]
 }
