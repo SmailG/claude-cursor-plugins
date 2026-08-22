@@ -1,15 +1,34 @@
 ---
 name: X MCP guide
 description: >-
-  ALWAYS read this before using any X connection, X MCP, or X plugin, and again
-  on any X error. Do not call an X tool until this file has been read in the
-  current turn.
+  ALWAYS read this when a user connects the X plugin or any X MCP, before using
+  any X connection, and again on any X error. Do not call an X tool until this
+  file has been read in the current turn. On first connect, send the user the
+  capabilities message defined here. Estimate the cost of every X call before
+  making it and confirm with the user before anything expensive.
 ---
 # X MCP guide
 
 This plugin uses **X MCP**. The user taps Connect and signs in with X. They are not setting up an API app.
 
 Probe the current user before search, timeline, bookmarks, or news. On a core error, stop. Name the simple issue, then the next step. Do not explain enrollment mechanics, billing internals, Connected vs enrolled, or pay-per-use. Never retry 401 / 403-enrollment / credits-blocked unchanged. Never ask for keys. Never tell them to create an app, Project, or Production env.
+
+## On connect
+
+The first time the user connects X — or on their first X interaction in a session — send this capabilities message once. Adapt the wording to your voice, keep every line of content:
+
+> You're connected to X. Here's what I can do:
+>
+> - **Your account** — your profile, home timeline, your posts, and mentions
+> - **Posts** — open any post from a link, and see who liked, reposted, or quoted it
+> - **Users** — look up any account by handle, search for users, and read their posts
+> - **Search** — search posts across X and count post volume on a topic
+> - **News & trends** — search X news stories and get trends by location
+> - **Bookmarks** — list, add, and remove bookmarks, and organize them into folders
+>
+> Requests use credits: you'll need to purchase credits at https://console.x.com for this to work. I'll show you a cost estimate before anything expensive.
+
+Send it once per session, not on every message. If their first message already contains an ask, send this first, then do the ask.
 
 ## The three errors
 
@@ -96,13 +115,33 @@ Resolve the current user (`user.fields=id,name,username,description,public_metri
 
 
 
-## Fields, pagination, cost
+## Cost awareness
+
+Every X call can charge the user. Estimate the cost **before** calling. Read [references/pricing.md](references/pricing.md) — it has the tool-by-tool price table, per-endpoint prices, free endpoints, and cost-saving tips. Once per session, fetch live pricing from https://console.x.com/api/credits/pricing (plain GET, no auth); it wins over the reference file.
+
+The live payload:
+
+- `eventTypePricing` — price **per resource returned** (each post, user, news story…).
+- `requestTypePricing` — price **per request** (writes, counts, trends…).
+- All prices are **USD dollars**: `0.005` = $0.005 = half a cent. Fractional cents to 3 decimal places are normal. $1.00 = 1,000 credits — that conversion is for your own math; quote costs to the user in dollars only.
+
+Estimate = (resources requested × per-resource price) + per-request price. `max_results` bounds a read: a search with `max_results=100` returning posts + expanded authors can cost ~100 × $0.005 + 100 × $0.01. Each pagination page bills again. Only request expansions you'll use — expanded objects bill too.
+
+**Under ~$0.25:** just do it — don't nag about pennies. Keep `max_results` small (10–25) unless they asked for more.
+
+**Over ~$0.25, or any pagination loop / bulk job:** stop first. Give a one-line estimate and ask:
+
+> This will cost about $X.XX. Want me to continue?
+
+Wait for a yes. Never silently run multi-page loops, full-archive searches, or bulk lookups. If they say yes, track spend as you go; if the running total will pass roughly double the estimate, stop and re-confirm.
+
+## Fields, pagination
 
 Request fields. If the tool takes `tweet.fields` or `post.fields`, send `created_at,public_metrics,author_id,lang,conversation_id`. Also `user.fields=created_at,description,public_metrics,verified,location` and `expansions=author_id,referenced_tweets.id`.
 
 `meta.next_token` → `pagination_token`. Stop when `next_token` is omitted.
 
-Reads bill per resource. Prefer recent counts, then `{me}` reads, then a small full-archive page. Recent window is 7 days.
+Prefer recent counts, then `{me}` reads, then a small full-archive page. Recent window is 7 days.
 
 ## Search operators
 
@@ -143,4 +182,5 @@ Current user first. Stop on errors 1–3.
 - Say pay-per-use, Project, Production, or "create an app".
 - Ask for secrets.
 - Retry 403 or credits-blocked in a loop.
+- Run an expensive request (over ~$0.25, pagination loops, bulk lookups) without giving an estimate and getting a yes.
 
