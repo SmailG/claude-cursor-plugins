@@ -2,6 +2,11 @@
 
 All notable changes to this plugin will be documented here.
 
+## 2.2.0 — developer scopes
+
+- Requested `developer.write` and `developer.billing.write`, and dropped `billing.write`, matching the scopes the X MCP server now advertises at `https://api.x.com/.well-known/oauth-protected-resource/mcp`.
+- Existing installs need to sign in to X again to pick up the new scopes.
+
 ## 2.1.0 — X MCP guide skill
 
 - Added the X MCP guide skill: tells agents how to handle sign-in, onboarding, and out-of-credits errors with simple user-facing messages, plus session-start, search, pagination, and cost-aware workflow rules.
