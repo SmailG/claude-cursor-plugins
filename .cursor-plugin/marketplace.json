@@ -307,6 +307,21 @@
       "name": "xero",
       "source": "third_party/xero",
       "description": "Read and write invoices, contacts, reports, and payroll."
+    },
+    {
+      "name": "outlook",
+      "source": "third_party/outlook",
+      "description": "Search, read, and send email, and look up contacts."
+    },
+    {
+      "name": "outlook-calendar",
+      "source": "third_party/outlook-calendar",
+      "description": "List, create, update, and cancel calendar events."
+    },
+    {
+      "name": "onedrive",
+      "source": "third_party/onedrive",
+      "description": "Browse, search, and read files."
     }
   ]
 }
