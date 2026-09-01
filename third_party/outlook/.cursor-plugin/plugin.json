@@ -6,7 +6,7 @@
     "cursor": "3.19.0",
     "sand": "0.30.0"
   },
-  "description": "Search, read, and send email, and look up contacts.",
+  "description": "Search, read, and send Microsoft Outlook email, and look up contacts.",
   "author": {
     "name": "Cursor",
     "email": "plugins@cursor.com"

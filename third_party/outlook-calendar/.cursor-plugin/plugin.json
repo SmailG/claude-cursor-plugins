@@ -6,7 +6,7 @@
     "cursor": "3.19.0",
     "sand": "0.30.0"
   },
-  "description": "List, create, update, and cancel calendar events.",
+  "description": "List, create, update, and cancel Microsoft Outlook calendar events.",
   "author": {
     "name": "Cursor",
     "email": "plugins@cursor.com"

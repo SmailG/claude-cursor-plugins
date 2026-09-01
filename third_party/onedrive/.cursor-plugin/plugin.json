@@ -6,7 +6,7 @@
     "cursor": "3.19.0",
     "sand": "0.30.0"
   },
-  "description": "Browse, search, and read files.",
+  "description": "Browse, search, and read Microsoft OneDrive files.",
   "author": {
     "name": "Cursor",
     "email": "plugins@cursor.com"

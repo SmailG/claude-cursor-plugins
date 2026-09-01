@@ -311,17 +311,17 @@
     {
       "name": "outlook",
       "source": "third_party/outlook",
-      "description": "Search, read, and send email, and look up contacts."
+      "description": "Search, read, and send Microsoft Outlook email, and look up contacts."
     },
     {
       "name": "outlook-calendar",
       "source": "third_party/outlook-calendar",
-      "description": "List, create, update, and cancel calendar events."
+      "description": "List, create, update, and cancel Microsoft Outlook calendar events."
     },
     {
       "name": "onedrive",
       "source": "third_party/onedrive",
-      "description": "Browse, search, and read files."
+      "description": "Browse, search, and read Microsoft OneDrive files."
     }
   ]
 }
