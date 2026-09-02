@@ -322,6 +322,11 @@
       "name": "onedrive",
       "source": "third_party/onedrive",
       "description": "Browse, search, and read Microsoft OneDrive files."
+    },
+    {
+      "name": "x-ads",
+      "source": "third_party/x-ads",
+      "description": "Manage ad campaigns, create ads, track conversions, and pull performance stats."
     }
   ]
 }
