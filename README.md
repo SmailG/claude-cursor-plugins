@@ -38,6 +38,7 @@ You can install as many plugins as you need:
 | `cursor-sdk` | [Cursor SDK](cursor-sdk/) | Cursor | Developer Tools | Build apps, scripts, CI pipelines, and automations on top of the Cursor TypeScript SDK (@cursor/sdk) — runtime selection, auth, streaming, MCP, error handling, and ready-to-extend integration patterns. |
 | `orchestrate` | [Orchestrate](orchestrate/) | Cursor | Developer Tools | Fan large tasks out across parallel Cursor cloud agents with planners, workers, verifiers, and structured handoffs. |
 | `pstack` | [pstack](pstack/) | Lauren Tan | Developer Tools | if you want to go fast, go deep first. pstack helps you write less, but higher quality code. rigorous agent workflows you can parallelize with confidence. |
+| `advisor` | [Advisor](advisor/) | Cursor | Developer Tools | Consult a stronger model at key checkpoints: before major decisions, when stuck on an error, and before declaring a task done. The advisor gets a full briefing plus the conversation transcript, returns guidance, and the main model keeps doing the work. |
 
 ## What changed from upstream
 

@@ -135,6 +135,16 @@
       "author": {
         "name": "Lauren Tan"
       }
+    },
+    {
+      "name": "advisor",
+      "description": "Consult a stronger model at key checkpoints: before major decisions, when stuck on an error, and before declaring a task done. The advisor gets a full briefing plus the conversation transcript, returns guidance, and the main model keeps doing the work.",
+      "source": "./advisor",
+      "category": "developer-tools",
+      "author": {
+        "name": "Cursor",
+        "email": "plugins@cursor.com"
+      }
     }
   ]
 }
