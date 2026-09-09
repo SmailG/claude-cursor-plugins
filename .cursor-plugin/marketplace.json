@@ -74,6 +74,11 @@
       "description": "if you want to go fast, go deep first. pstack helps you write less, but higher quality code. rigorous agent workflows you can parallelize with confidence."
     },
     {
+      "name": "grok-voice",
+      "source": "grok-voice",
+      "description": "Add Grok voice to an app: realtime speech-to-speech, speech-to-text dictation, text-to-speech read-aloud, and a log-driven fix loop for voice sessions."
+    },
+    {
       "name": "advisor",
       "source": "advisor",
       "description": "Consult a stronger model before major decisions, when stuck, and before declaring done."
@@ -332,6 +337,16 @@
       "name": "x-ads",
       "source": "third_party/x-ads",
       "description": "Manage ad campaigns, create ads, track conversions, and pull performance stats."
+    },
+    {
+      "name": "attio",
+      "source": "third_party/attio",
+      "description": "Search and update CRM records, lists, notes, and tasks."
+    },
+    {
+      "name": "hunter",
+      "source": "third_party/hunter",
+      "description": "Find and verify emails, discover companies, and save leads."
     }
   ]
 }
