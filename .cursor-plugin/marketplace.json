@@ -347,8 +347,11 @@
       "name": "hunter",
       "source": "third_party/hunter",
       "description": "Find and verify emails, discover companies, and save leads."
+    },
+    {
+      "name": "gamma",
+      "source": "third_party/gamma",
+      "description": "Generate presentations, documents, and webpages."
     }
   ]
 }
-
-
