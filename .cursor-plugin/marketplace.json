@@ -397,6 +397,11 @@
       "name": "excalidraw",
       "source": "third_party/excalidraw",
       "description": "Draw and export hand-drawn diagrams from chat."
+    },
+    {
+      "name": "google-cloud-bigquery",
+      "source": "third_party/google-cloud-bigquery",
+      "description": "Explore datasets and tables and run SQL queries."
     }
   ]
 }
