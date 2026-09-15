@@ -2,6 +2,11 @@
 
 All notable changes to this plugin will be documented here.
 
+## 2.4.0 — X Chat scopes
+
+- Requested `dm.read` and `dm.write` so agents can call X Chat endpoints on `https://api.x.com/mcp`.
+- Existing installs need to sign in to X again to pick up the new scopes.
+
 ## 2.3.0 — Auto credits, missing-tools failure, never pay first
 
 - Developer accounts are auto-created and auto-credited. On connect, agents confirm X tools exist, fetch `get_usage_credits`, then congratulate with “you've received free X API credits to get started” (no dollar amount). Starter amounts by plan (Ultra $100, SuperGrok Plus $50, Pro+ $30, Pro $10) only if the user asks how much they received. Remaining balance (`total_balance`) is for budgets and “what's left.”
