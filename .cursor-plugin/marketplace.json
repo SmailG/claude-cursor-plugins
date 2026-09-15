@@ -141,7 +141,7 @@
     {
       "name": "x",
       "source": "third_party/x",
-      "description": "Search posts, read timelines, pull trends, and manage bookmarks."
+      "description": "Search posts, read timelines, pull trends, manage bookmarks, and access X Chat."
     },
     {
       "name": "clay",
@@ -332,6 +332,11 @@
       "name": "onedrive",
       "source": "third_party/onedrive",
       "description": "Browse, search, and read Microsoft OneDrive files."
+    },
+    {
+      "name": "sharepoint",
+      "source": "third_party/sharepoint",
+      "description": "Search and read Microsoft SharePoint sites, document libraries, files, and lists."
     },
     {
       "name": "teams",
