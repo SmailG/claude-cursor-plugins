@@ -8,14 +8,16 @@ description: >-
   congrats + capabilities message. Never tell the user to buy credits until that
   check returns ~$0 or a job would exceed the balance. If X is connected but
   tools are missing (tools=0, user-X-* not found), that is a setup failure — not
-  a paywall. Estimate the cost of every X call before making it and confirm with
-  the user before anything expensive.
+  a paywall. For encrypted X Chat / XChat DMs, also read skills/x-chat/SKILL.md.
+  If chat tools or dm.read/dm.write are missing while other X tools work, tell
+  them to reconnect the X plugin. Estimate the cost of every X call before
+  making it and confirm with the user before anything expensive.
 ---
 # X MCP guide
 
 This plugin uses **X MCP**. The user taps Connect and signs in with X. Developer accounts are auto-created and auto-credited. They are not setting up an API app.
 
-On a core error, stop. Name the simple issue, then the next step. Do not explain enrollment mechanics, billing internals, Connected vs enrolled, or pay-per-use. Never retry 401 / 403-enrollment / credits-blocked / missing-tools unchanged. Never ask for keys. Never tell them to create an app, Project, or Production env except the quoted [error 2](#2-account-not-ready) steps.
+On a core error, stop. Name the simple issue, then the next step. Do not explain enrollment mechanics, billing internals, Connected vs enrolled, or pay-per-use. Never retry 401 / 403-enrollment / credits-blocked / missing-tools unchanged. Never ask for keys or Bearer tokens. Chat PIN is allowed only via secret-request (never pasted in chat). Never tell them to create an app, Project, or Production env except the quoted [error 2](#2-account-not-ready) steps. For encrypted X Chat, follow [X Chat](../x-chat/SKILL.md).
 
 **Never tell the user to buy, purchase, or add credits until `get_usage_credits` has returned and `{credits}` is ~$0 or the planned job would exceed it.** Do not use “you’ll need to purchase credits at https://console.x.com” (or any “buy credits first” variant) on connect or before that check. Missing tools is not a pay CTA.
 
@@ -96,6 +98,7 @@ Then:
 > - **Search** — search posts across X and count post volume on a topic
 > - **News & trends** — search X news stories and get trends by location
 > - **Bookmarks** — list, add, and remove bookmarks, and organize them into folders
+> - **Chat** — read and reply to encrypted X Chat (needs a Chat PIN via secret-request, not pasted here). Posting tweets is not supported.
 >
 > You have about $X.XX in credits.
 >
@@ -134,6 +137,8 @@ If status is `connected` but tools=0, that is #2, not this.
 - **Every** X tool missing (`user-X-get_users_me` not found **and** no other `user-X-*` tools)
 
 Do **not** treat `get_usage_credits` not found as #2 by itself. If other `user-X-*` tools work, that is a missing endpoint or an outage — follow the 5xx / could-not-read-balance copy, not “create a Default Project and App.”
+
+Missing **Chat** tools (`get_chat_conversations`, `send_chat_message`, …) while timeline/search/`get_users_me` work is **not** #2. That is [X Chat scopes](#x-chat-scopes) — reconnect for `dm.read` / `dm.write`.
 
 **When (fallback):** `client-forbidden`; `user-not-enrolled`; `client-not-enrolled`; Client Forbidden; 403 on timeline / mentions / search / bookmarks after Connect.
 
@@ -190,6 +195,16 @@ Do not ask. Do not accept one if they offer. This plugin is OAuth via the X conn
 > Don't paste a Bearer token or API key. I only use the X plugin in this chat — tap Connect on the X card and sign in with X.
 
 Then follow [error 1](#1-sign-in-failed) or [error 2](#2-account-not-ready). Do not curl, set headers, or stand up a local MCP with their token.
+
+### X Chat scopes
+
+**When:** the user wants X Chat / encrypted DMs, other X tools work, but Chat tools are missing or a Chat call 403s for `dm.read` / `dm.write`.
+
+**Say:**
+
+> X Chat needs an extra sign-in. Reconnect the X plugin in this chat and approve access (including messages). Then I'll retry. Don't paste keys, tokens, or your Chat PIN here.
+
+Do not tell them to create a Project or App. Do not ask for a Bearer token. After reconnect, follow [X Chat](../x-chat/SKILL.md): clone `xchat-lite` from https://github.com/xdevplatform/xchat-grokbot-helper, secret-request **only** the Chat PIN into `CHAT_PIN`, then read/reply.
 
 ## Other errors
 
@@ -325,15 +340,17 @@ When they ask what they can do, re-fetch `{credits}`, say how many they have lef
 - Topic: recent counts → small search page → stop.
 - Bookmarks: list `{me}`. Save: parse status id, create bookmark.
 - One post: parse status id, lookup.
+- X Chat / encrypted DMs: follow [X Chat](../x-chat/SKILL.md). Secret-request Chat PIN only. Owner must approve outbound text unless they already said to send or reply.
 
 ## Don't
 
 - Explain deep details (pay-per-use, Connected vs enrolled, billing internals, free vs prepaid grants). Do name the simple issue.
 - Say pay-per-use or Production. Do not tell them to create an app or Project except the quoted [error 2](#2-account-not-ready) steps.
-- Ask for secrets, Bearer tokens, API keys, or passwords. Do not sign the user into X in the agent browser or on this computer.
+- Ask for secrets, Bearer tokens, API keys, or passwords. Do not sign the user into X in the agent browser or on this computer. Chat PIN is the exception: secret-request into `CHAT_PIN` only — never paste it into the transcript.
 - Retry 403, missing-tools, or credits-blocked in a loop.
 - Tell the user to buy / purchase / add credits before `get_usage_credits` has returned. Never use “you’ll need to purchase credits at https://console.x.com” unless the check showed ~$0 or a job would exceed `{credits}`.
 - Quote `total_balance` or `free_grants` as “you received $X”. Congrats is the free-credits line only, and only when they **just connected this chat**. Gift size by plan is the starter table, and only if they ask **and** you know the plan. Always say remaining balance (`You have about $X.XX in credits.`, including $0.00). `{credits}` ~$0 skips congrats.
 - Treat tools=0 / `user-X-*` not found as a paywall. That is [error 2](#2-account-not-ready).
+- Treat missing Chat tools as “create a Project and App.” If other X tools work, that is [X Chat scopes](#x-chat-scopes) — reconnect.
 - Pitch or run work above `{credits}`. If `{credits}` is ~$0, only free lookups. If they have some balance, offer a cheaper alternative that fits.
 - Run an expensive request (over ~$0.25, pagination loops, bulk lookups) without giving an estimate and getting a yes.
