@@ -2,6 +2,11 @@
 
 All notable changes to this plugin will be documented here.
 
+## 2.5.0 — X Chat skill (read / reply)
+
+- Added the X Chat companion skill: clone `xchat_lite.py` from https://github.com/xdevplatform/xchat-grokbot-helper, secret-request Chat PIN only, decrypt/encrypt locally, MCP for ciphertext. Owner must approve outbound text unless they already said to send.
+- Missing Chat tools or `dm.read` / `dm.write` while other X tools work: reconnect the X plugin (not create a Project/App, not a Bearer token). On-connect capabilities now include Chat (not posting tweets).
+
 ## 2.4.0 — X Chat scopes
 
 - Requested `dm.read` and `dm.write` so agents can call X Chat endpoints on `https://api.x.com/mcp`.
