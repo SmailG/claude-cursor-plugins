@@ -7,7 +7,7 @@ const root = resolve(fileURLToPath(import.meta.url), '../..');
 
 const SKIP = new Set([
   '.git', '.github', '.claude', '.claude-plugin', '.cursor-plugin',
-  'schemas', 'scripts', 'docs', 'node_modules', 'supertool',
+  'schemas', 'scripts', 'docs', 'node_modules',
 ]);
 
 const readJSON = p => JSON.parse(readFileSync(p, 'utf-8'));
