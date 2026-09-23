@@ -2,6 +2,10 @@
 
 All notable changes to this plugin will be documented here.
 
+## 1.1.0
+
+- Refreshed the `google-sheets` skill for the latest tool surface.
+
 ## 1.0.0 - initial release
 
 - Logo: official Google Sheets product icon on a padded white tile.
