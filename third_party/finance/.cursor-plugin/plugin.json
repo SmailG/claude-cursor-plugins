@@ -1,7 +1,7 @@
 {
   "name": "finance",
   "displayName": "Finance",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "minClientVersions": {
     "cursor": "never",
     "grokbot": "0.49.0",
