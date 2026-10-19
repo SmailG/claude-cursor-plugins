@@ -25,7 +25,7 @@ const BOM = '\uFEFF';
 const FRONTMATTER = /^---[ \t]*\n([\s\S]*?)\n---[ \t]*(?:\n|$)/;
 const TOP_LEVEL_KEY = /^([A-Za-z_]+)[ \t]*:[ \t]*(.*)$/;
 // A Cursor key in any shape: quoted, indented, in a flow map, or as a `? key` complex key.
-const CURSOR_KEY_MENTION = /\b(readonly|is_background)\b['"]?[ \t]*(?::|$)/gim;
+const CURSOR_KEY_MENTION = /\b(readonly|is_background)['"]?[ \t]*(?::|$)/gim;
 const UNIQUE_KEYS = ['readonly', 'is_background', 'disallowedtools', 'model', 'effort', 'background'];
 const GENERATED_PATH = /^\.\/(agents|\.claude-plugin\/agents)\/[^/]+\.md$/;
 
@@ -202,7 +202,7 @@ export function syncPluginAgents(pluginDir) {
 
 const isGeneratedAgentsField = value =>
   value === undefined ||
-  (Array.isArray(value) && value.every(p => typeof p === 'string' && GENERATED_PATH.test(p)));
+  (Array.isArray(value) && value.every(p => GENERATED_PATH.test(p)));
 
 // The manifest with its `agents` field set to `agents`, or removed when `agents` is null.
 // Refuses to replace an `agents` field this script did not write.

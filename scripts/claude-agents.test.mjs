@@ -43,6 +43,7 @@ const HIDDEN_KEYS = {
   'an indented key': '  readonly: true',
   'a tab-indented key': '\treadonly: true',
   'a flow map': 'meta: {readonly: true}',
+  'a flow map with a spaced colon': 'meta: {readonly : true}',
   'a complex key': '? is_background\n: true',
 };
 for (const [shape, frontmatter] of Object.entries(HIDDEN_KEYS)) {
@@ -53,6 +54,10 @@ for (const [shape, frontmatter] of Object.entries(HIDDEN_KEYS)) {
 
 test('throws on a Cursor key hidden in fully indented frontmatter', () => {
   assert.throws(() => adaptAgent(agent('  name: a\n  readonly: true')), /not a plain top-level key/);
+});
+
+test('allows a key that only ends in readonly', () => {
+  assert.equal(adaptAgent(agent('name: a\ndescription: d\nnotreadonly: true')), null);
 });
 
 test('allows the word readonly in prose', () => {
@@ -319,7 +324,7 @@ test('applyAgentsField sets, replaces and removes the agents field', () => {
   assert.deepEqual(applyAgentsField(base, null), base);
 });
 
-for (const agents of [['./extra/more.md'], './agents/', [42], ['./agents/sub/x.md']]) {
+for (const agents of [['./extra/more.md'], './agents/', [42], ['./agents/sub/x.md'], ['../agents/x.md']]) {
   test(`applyAgentsField refuses to replace an agents field it did not write (${JSON.stringify(agents)})`, () => {
     assert.throws(() => applyAgentsField({ name: 'p', agents }, ['./agents/x.md']), /sets its own agents field/);
     assert.throws(() => applyAgentsField({ name: 'p', agents }, null), /sets its own agents field/);
