@@ -37,25 +37,40 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git config core.editor true
 
-      # GitHub's "automatically delete head branches" skips merges made with an app token, such as
-      # the auto-merge below enabled with GITHUB_TOKEN, so merged sync branches are removed here.
-      # A branch that moved after its PR merged is left alone.
-      - name: Delete merged sync branches
+      # GitHub's "automatically delete head branches" skips merges made with an app token (the
+      # auto-merge below may be enabled with GITHUB_TOKEN) and never applies to closed PRs, so
+      # this removes the branch of every merged or superseded sync PR. It keeps a branch an open
+      # PR uses, or one that moved after its PR closed. Cleanup must never block the sync.
+      - name: Delete finished sync branches
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh pr list --label sync --state merged --limit 100 --json headRefName,headRefOid \
-            --jq '.[] | select(.headRefName | startswith("sync/")) | "\(.headRefName) \(.headRefOid)"' \
-          | while read -r BRANCH MERGED_SHA; do
-              CURRENT_SHA=$(gh api "repos/$GH_REPO/branches/$BRANCH" --jq .commit.sha 2>/dev/null) || continue
-              if [ "$CURRENT_SHA" = "$MERGED_SHA" ]; then
-                if gh api -X DELETE "repos/$GH_REPO/git/refs/heads/$BRANCH"; then
-                  echo "deleted $BRANCH"
-                else
-                  echo "::warning::could not delete $BRANCH"
-                fi
+          # shellcheck disable=SC2016 # $open and $name are jq variables, not shell ones
+          gh pr list --label sync --state all --limit 200 --json headRefName,headRefOid,state \
+            --jq '(map(select(.state == "OPEN") | .headRefName)) as $open
+              | .[]
+              | select(.state != "OPEN" and (.headRefName | startswith("sync/")))
+              | select(.headRefName as $name | any($open[]; . == $name) | not)
+              | "\(.headRefName) \(.headRefOid)"' \
+          | while read -r BRANCH PR_SHA; do
+              if ! CURRENT_SHA=$(gh api "repos/$GH_REPO/branches/$BRANCH" --jq .commit.sha 2>&1); then
+                case "$CURRENT_SHA" in
+                  *"HTTP 404"*) ;;
+                  *) echo "::warning::could not read $BRANCH: $CURRENT_SHA" ;;
+                esac
+                continue
+              fi
+              if [ "$CURRENT_SHA" != "$PR_SHA" ]; then
+                echo "::warning::$BRANCH moved after its PR closed; not deleting it"
+                continue
+              fi
+              if gh api -X DELETE "repos/$GH_REPO/git/refs/heads/$BRANCH" --silent; then
+                # A later push of the same name would otherwise fail its lease on this stale ref.
+                git update-ref -d "refs/remotes/origin/$BRANCH" || true
+                echo "deleted $BRANCH"
               else
-                echo "::warning::$BRANCH moved after its PR merged; not deleting it"
+                echo "::warning::could not delete $BRANCH"
               fi
             done
 
@@ -228,7 +243,7 @@ jobs:
             --state open \
             --json number,headRefName \
             --jq '.[] | select(.headRefName | startswith("sync/")) | .number' \
-            | xargs -r -I{} gh pr close {} --delete-branch \
+            | xargs -r -I{} gh pr close {} \
               --comment "Superseded by newer sync PR." \
           || true
 
