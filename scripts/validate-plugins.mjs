@@ -92,59 +92,59 @@ for (const entry of marketplace.plugins ?? []) {
   }
 }
 
-// 3. Validate .claude-plugin/marketplace.json and per-plugin manifests
 const claudeMarketplacePath = resolve(root, ".claude-plugin/marketplace.json");
+const claudeMarketplace = existsSync(claudeMarketplacePath)
+  ? loadJSON(claudeMarketplacePath)
+  : { plugins: [] };
 
-if (!existsSync(claudeMarketplacePath)) {
-  fail(".claude-plugin/marketplace.json not found");
-} else {
-  const cm = loadJSON(claudeMarketplacePath);
+for (const entry of claudeMarketplace.plugins ?? []) {
+  const pluginDir = resolve(root, entry.source);
+  const pluginJsonPath = resolve(pluginDir, ".claude-plugin/plugin.json");
 
-  if (!cm.name || typeof cm.name !== "string") {
-    fail('.claude-plugin/marketplace.json: missing or invalid "name"');
+  if (!existsSync(pluginJsonPath)) {
+    fail(
+      `Plugin "${entry.name}": missing .claude-plugin/plugin.json in "${entry.source}"`
+    );
+    continue;
   }
-  if (!Array.isArray(cm.plugins)) {
-    fail('.claude-plugin/marketplace.json: "plugins" must be an array');
+
+  const pluginJson = loadJSON(pluginJsonPath);
+  if (pluginJson.name && pluginJson.name !== entry.name) {
+    fail(
+      `Plugin "${entry.name}": Claude marketplace name does not match .claude-plugin/plugin.json name "${pluginJson.name}"`
+    );
   }
+}
 
-  for (const entry of cm.plugins ?? []) {
-    const pluginDir = resolve(root, entry.source);
-    const claudePluginJsonPath = resolve(pluginDir, ".claude-plugin/plugin.json");
+const manifestPaths = [
+  ".cursor-plugin/plugin.json",
+  ".claude-plugin/plugin.json",
+  "plugin.json",
+];
+const sources = new Map();
+for (const entry of [
+  ...(marketplace.plugins ?? []),
+  ...(claudeMarketplace.plugins ?? []),
+]) {
+  sources.set(resolve(root, entry.source), entry.name);
+}
 
-    if (!existsSync(pluginDir)) {
-      fail(
-        `Claude plugin "${entry.name}": source directory "${entry.source}" does not exist`
-      );
-      continue;
-    }
+for (const [pluginDir, name] of sources) {
+  const versions = manifestPaths
+    .map((path) => resolve(pluginDir, path))
+    .filter((path) => existsSync(path))
+    .map((path) => ({ path, version: loadJSON(path).version }))
+    .filter(({ version }) => version !== undefined);
 
-    if (!existsSync(claudePluginJsonPath)) {
-      fail(
-        `Claude plugin "${entry.name}": missing .claude-plugin/plugin.json in "${entry.source}"`
-      );
-      continue;
-    }
-
-    const p = loadJSON(claudePluginJsonPath);
-
-    if (!p.name || typeof p.name !== "string") {
-      fail(`Claude plugin "${entry.name}": plugin.json missing "name"`);
-    }
-    if (!p.description || typeof p.description !== "string") {
-      fail(`Claude plugin "${entry.name}": plugin.json missing "description"`);
-    }
-    if (!p.author?.name) {
-      fail(`Claude plugin "${entry.name}": plugin.json missing "author.name"`);
-    }
-    if (p.name && p.name !== entry.name) {
-      fail(
-        `Claude plugin "${entry.name}": plugin.json name "${p.name}" does not match marketplace entry`
-      );
+  if (new Set(versions.map(({ version }) => version)).size > 1) {
+    fail(`Plugin "${name}": manifest versions differ:`);
+    for (const { path, version } of versions) {
+      console.error(`  ${path.slice(root.length + 1)}: ${version}`);
     }
   }
 }
 
-// 4. Report results
+// 3. Report results
 if (errors > 0) {
   console.error(`\nValidation failed with ${errors} error(s).`);
   process.exit(1);

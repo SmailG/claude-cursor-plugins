@@ -163,6 +163,16 @@
       "author": {
         "name": "Dylan Gattey"
       }
+    },
+    {
+      "name": "origin-apps",
+      "description": "Skills for building on the Cursor Origin API. Fetch the live spec first, then follow the Origin rules for credentials, scopes, webhooks, paging, and errors. Includes a skill that plans the port of an existing GitHub App.",
+      "source": "./origin-apps",
+      "category": "developer-tools",
+      "author": {
+        "name": "Cursor",
+        "email": "plugins@cursor.com"
+      }
     }
   ]
 }
