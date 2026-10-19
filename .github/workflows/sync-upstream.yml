@@ -43,6 +43,9 @@ jobs:
       # PR uses, or one that moved after its PR closed. Cleanup must never block the sync.
       - name: Delete finished sync branches
         continue-on-error: true
+        timeout-minutes: 5
+        # Explicit bash adds pipefail, so a failed `gh pr list` shows as a failed step.
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
