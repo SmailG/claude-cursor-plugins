@@ -6,6 +6,6 @@
   },
   "agents": [
     "./agents/comment-sicko.md",
-    "./agents/claude-code/poteto-agent.md"
+    "./.claude-plugin/agents/poteto-agent.md"
   ]
 }

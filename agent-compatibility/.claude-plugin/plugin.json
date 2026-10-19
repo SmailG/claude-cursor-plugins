@@ -6,9 +6,9 @@
     "email": "plugins@cursor.com"
   },
   "agents": [
-    "./agents/claude-code/compatibility-scan-review.md",
-    "./agents/claude-code/docs-reliability-review.md",
-    "./agents/claude-code/startup-review.md",
-    "./agents/claude-code/validation-review.md"
+    "./.claude-plugin/agents/compatibility-scan-review.md",
+    "./.claude-plugin/agents/docs-reliability-review.md",
+    "./.claude-plugin/agents/startup-review.md",
+    "./.claude-plugin/agents/validation-review.md"
   ]
 }

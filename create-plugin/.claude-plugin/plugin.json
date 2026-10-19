@@ -6,6 +6,6 @@
     "email": "plugins@cursor.com"
   },
   "agents": [
-    "./agents/claude-code/plugin-architect.md"
+    "./.claude-plugin/agents/plugin-architect.md"
   ]
 }

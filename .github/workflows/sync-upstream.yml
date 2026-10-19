@@ -151,6 +151,15 @@ jobs:
         if: steps.check.outputs.changed == 'true'
         run: git add -A && git commit --amend --no-edit
 
+      # Sync PRs auto-merge and trigger no workflows, so this is the only check on them.
+      - name: Check fork scripts against the merged tree
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          node --test scripts/*.test.mjs
+          if [ -f scripts/generate-pstack-harness-trees.mjs ]; then
+            node scripts/generate-pstack-harness-trees.mjs --check
+          fi
+
       - name: Push sync branch
         if: steps.check.outputs.changed == 'true'
         env:

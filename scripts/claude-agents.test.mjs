@@ -1,65 +1,162 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, existsSync, readFileSync } from 'fs';
+import { mkdtempSync, mkdirSync, writeFileSync, existsSync, readFileSync, symlinkSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 
-import { adaptAgent, syncPluginAgents } from './claude-agents.mjs';
+import { adaptAgent, applyAgentsField, syncPluginAgents } from './claude-agents.mjs';
 
-const agent = (frontmatter, body = '\n# Body\n\nmodel: fast stays in the body\n') =>
-  `---\n${frontmatter}\n---\n${body}`;
+const BOM = '\uFEFF';
+const BODY = '\n# Body\n\nreadonly: true\nmodel: fast\n';
+const DENY = 'disallowedTools: Edit, Write, NotebookEdit, Agent';
+const agent = (frontmatter, body = BODY) => `---\n${frontmatter}\n---\n${body}`;
+const fm = text => text.replace(BOM, '').replace(/\r\n/g, '\n').match(/^---\n([\s\S]*?)\n---/)[1];
+const adaptFm = frontmatter => fm(adaptAgent(agent(`name: a\ndescription: d\n${frontmatter}`)));
+const denies = out => assert.match(out, new RegExp(`^${DENY}$`, 'm'));
 
 test('returns null when no Cursor-only key is present', () => {
   assert.equal(adaptAgent(agent('name: a\ndescription: d\nmodel: inherit')), null);
 });
 
-test('maps readonly: true to disallowedTools for the write tools', () => {
-  const out = adaptAgent(agent('name: a\ndescription: d\nreadonly: true'));
-  assert.match(out, /^disallowedTools: Edit, Write, NotebookEdit$/m);
-  assert.doesNotMatch(out, /^readonly:/m);
+for (const value of ['true', '"true"', "'true'", 'True', 'yes', 'true # reads only', 'maybe']) {
+  test(`readonly: ${value} denies the write tools (fails closed)`, () => {
+    const out = adaptFm(`readonly: ${value}`);
+    denies(out);
+    assert.doesNotMatch(out, /readonly/i);
+  });
+}
+
+for (const value of ['false', '"false"', 'No', 'off', '0']) {
+  test(`readonly: ${value} drops the key without a deny list`, () => {
+    assert.doesNotMatch(adaptFm(`readonly: ${value}`), /readonly|disallowedTools/i);
+  });
+}
+
+test('matches the readonly key case-insensitively and with space before the colon', () => {
+  denies(adaptFm('Readonly : true'));
 });
 
-test('drops readonly: false without adding disallowedTools', () => {
-  const out = adaptAgent(agent('name: a\ndescription: d\nreadonly: false'));
-  assert.doesNotMatch(out, /readonly|disallowedTools/);
+test('throws on a quoted Cursor key it would otherwise miss', () => {
+  assert.throws(() => adaptAgent(agent('name: a\ndescription: d\n"readonly": true')), /quoted/);
 });
+
+test('merges readonly into an existing scalar disallowedTools without duplicating the key', () => {
+  assert.deepEqual(adaptFm('disallowedTools: Bash, Edit\nreadonly: true').match(/^disallowedTools:.*$/gm), [
+    'disallowedTools: Bash, Edit, Write, NotebookEdit, Agent',
+  ]);
+});
+
+for (const list of ['disallowedTools:\n  - Bash', 'disallowedTools: [Bash]']) {
+  test(`refuses to merge into a YAML-list disallowedTools (${list.split('\n')[0]})`, () => {
+    const text = agent(`name: a\ndescription: d\n${list}\nreadonly: true`);
+    assert.throws(() => adaptAgent(text), /YAML-list/);
+  });
+}
 
 test('maps is_background: true to background: true', () => {
-  const out = adaptAgent(agent('name: a\ndescription: d\nis_background: true'));
+  const out = adaptFm('is_background: true');
   assert.match(out, /^background: true$/m);
   assert.doesNotMatch(out, /is_background/);
 });
 
-test('maps model: fast to haiku', () => {
-  const out = adaptAgent(agent('name: a\ndescription: d\nmodel: fast'));
-  assert.match(out, /^model: haiku$/m);
+test('drops is_background: false', () => {
+  assert.doesNotMatch(adaptFm('is_background: false'), /background/);
 });
 
-test('drops a model Claude Code cannot resolve so the agent uses the default order', () => {
-  const out = adaptAgent(agent('name: a\ndescription: d\nmodel: grok-4.6[effort=xhigh]'));
-  assert.equal(out, agent('name: a\ndescription: d'));
+test('keeps an explicit background key instead of adding a second one', () => {
+  assert.deepEqual(adaptFm('background: false\nis_background: true').match(/background:.*/g), [
+    'background: false',
+  ]);
 });
 
-test('keeps a Claude model id unchanged', () => {
-  assert.equal(adaptAgent(agent('name: a\ndescription: d\nmodel: claude-opus-5-5')), null);
+test('throws on an is_background value it cannot read', () => {
+  assert.throws(() => adaptAgent(agent('name: a\ndescription: d\nis_background: later')), /is_background/);
+});
+
+for (const value of ['fast', "'fast'", 'fast # cheap', 'Fast']) {
+  test(`model: ${value} maps to haiku`, () => {
+    assert.match(adaptFm(`model: ${value}`), /^model: haiku$/m);
+  });
+}
+
+for (const model of ['sonnet', 'opus', 'haiku', 'fable', 'inherit', 'claude-opus-5-5', 'opus[1m]']) {
+  test(`keeps the Claude model ${model} unchanged`, () => {
+    assert.equal(adaptAgent(agent(`name: a\ndescription: d\nmodel: ${model}`)), null);
+  });
+}
+
+test('normalizes a quoted Claude model instead of dropping it', () => {
+  assert.match(adaptFm('model: "sonnet"'), /^model: sonnet$/m);
+});
+
+test('drops best, which is not a subagent model value', () => {
+  assert.doesNotMatch(adaptFm('model: best'), /model:/);
+});
+
+test('drops a non-Claude model but keeps its effort', () => {
+  const out = adaptFm('model: grok-4.6[effort=xhigh]');
+  assert.doesNotMatch(out, /model:/);
+  assert.match(out, /^effort: xhigh$/m);
+});
+
+test('splits a Claude model with an effort suffix into model and effort', () => {
+  const out = adaptFm('model: claude-opus-5[effort=high]');
+  assert.match(out, /^model: claude-opus-5$/m);
+  assert.match(out, /^effort: high$/m);
+});
+
+test('does not override an existing effort key', () => {
+  assert.deepEqual(adaptFm('effort: low\nmodel: grok[effort=max]').match(/effort:.*/g), ['effort: low']);
+});
+
+test('ignores an effort level Claude Code does not have', () => {
+  assert.doesNotMatch(adaptFm('model: grok[effort=turbo]'), /effort/);
+});
+
+test('marks the copy as generated from its source', () => {
+  const out = fm(adaptAgent(agent('name: a\ndescription: d\nreadonly: true'), 'agents/a.md'));
+  assert.match(out, /^# Generated by scripts\/sync-manifests\.mjs from agents\/a\.md; do not edit\.$/m);
 });
 
 test('leaves the body untouched, including lines that look like frontmatter', () => {
-  const body = '\n# Body\n\nreadonly: true\nmodel: fast\n';
-  const out = adaptAgent(agent('name: a\ndescription: d\nreadonly: true', body));
-  assert.ok(out.endsWith(`---\n${body}`));
+  const body = '\n# Body\n\n---\nreadonly: true\nmodel: fast\n';
+  assert.ok(adaptAgent(agent('name: a\ndescription: d\nreadonly: true', body)).endsWith(`---\n${body}`));
 });
 
-test('preserves a multi-line description block', () => {
-  const fm = 'name: a\ndescription: >-\n  line one\n  line two\nis_background: true';
-  const out = adaptAgent(agent(fm));
-  assert.match(out, /description: >-\n  line one\n  line two\n/);
+test('leaves indented keys inside a block value untouched', () => {
+  const out = adaptFm('readonly: true\nnotes: |\n  readonly: false\n  model: fast');
+  denies(out);
+  assert.match(out, /^  readonly: false$/m);
+  assert.match(out, /^  model: fast$/m);
 });
 
-test('returns null for a file without frontmatter', () => {
-  assert.equal(adaptAgent('# no frontmatter\nreadonly: true\n'), null);
+test('handles CRLF line endings and keeps them', () => {
+  const out = adaptAgent(agent('name: a\ndescription: d\nreadonly: true').replace(/\n/g, '\r\n'));
+  denies(fm(out));
+  assert.doesNotMatch(out.replace(/\r\n/g, ''), /\n/);
 });
 
+test('handles a byte-order mark and keeps it', () => {
+  const out = adaptAgent(BOM + agent('name: a\ndescription: d\nreadonly: true'));
+  assert.ok(out.startsWith(`${BOM}---\n`));
+  denies(fm(out));
+});
+
+test('handles a closing fence with trailing space or at end of file', () => {
+  assert.match(adaptAgent('---\nname: a\nreadonly: true\n--- \nbody'), /disallowedTools/);
+  assert.match(adaptAgent('---\nname: a\nreadonly: true\n---'), /disallowedTools/);
+});
+
+test('throws when Cursor keys appear but no frontmatter is recognised', () => {
+  assert.throws(() => adaptAgent('---\nname: a\nreadonly: true\n'), /outside frontmatter/);
+});
+
+test('returns null for a file without frontmatter or Cursor keys', () => {
+  assert.equal(adaptAgent('# just notes\n'), null);
+});
+
+const READONLY = agent('name: a\ndescription: d\nreadonly: true');
+const PLAIN = agent('name: b\ndescription: d', '\n# Body\n');
 const pluginWith = files => {
   const dir = mkdtempSync(join(tmpdir(), 'claude-agents-'));
   mkdirSync(join(dir, 'agents'));
@@ -67,33 +164,83 @@ const pluginWith = files => {
   return dir;
 };
 
-test('lists generated copies and untouched originals together', () => {
-  const dir = pluginWith({
-    'a.md': agent('name: a\ndescription: d\nreadonly: true'),
-    'b.md': agent('name: b\ndescription: d'),
-  });
-  assert.deepEqual(syncPluginAgents(dir), ['./agents/claude-code/a.md', './agents/b.md']);
-  assert.match(readFileSync(join(dir, 'agents/claude-code/a.md'), 'utf-8'), /disallowedTools/);
+test('lists generated copies and untouched originals in a fixed order', () => {
+  const dir = pluginWith({ 'z.md': PLAIN, 'B.md': READONLY, 'a.md': READONLY });
+  assert.deepEqual(syncPluginAgents(dir), [
+    './.claude-plugin/agents/B.md',
+    './.claude-plugin/agents/a.md',
+    './agents/z.md',
+  ]);
+  denies(fm(readFileSync(join(dir, '.claude-plugin/agents/a.md'), 'utf-8')));
 });
 
-test('returns null and removes stale copies once no agent needs adapting', () => {
-  const dir = pluginWith({ 'b.md': agent('name: b\ndescription: d') });
-  mkdirSync(join(dir, 'agents/claude-code'));
-  writeFileSync(join(dir, 'agents/claude-code/old.md'), 'stale');
-  assert.equal(syncPluginAgents(dir), null);
-  assert.equal(existsSync(join(dir, 'agents/claude-code')), false);
+test('includes a symlinked agent file', () => {
+  const dir = pluginWith({ 'a.md': READONLY });
+  writeFileSync(join(dir, 'real.md'), PLAIN);
+  symlinkSync(join(dir, 'real.md'), join(dir, 'agents', 'link.md'));
+  assert.deepEqual(syncPluginAgents(dir), ['./.claude-plugin/agents/a.md', './agents/link.md']);
 });
 
-test('refuses agent subfolders, which a manifest list would silently drop', () => {
-  const dir = pluginWith({ 'a.md': agent('name: a\ndescription: d\nreadonly: true') });
-  mkdirSync(join(dir, 'agents/review'));
-  assert.throws(() => syncPluginAgents(dir), /unsupported agent subfolders review/);
+test('adapts a symlinked agent that needs it', () => {
+  const dir = pluginWith({});
+  writeFileSync(join(dir, 'real.md'), READONLY);
+  symlinkSync(join(dir, 'real.md'), join(dir, 'agents', 'link.md'));
+  assert.deepEqual(syncPluginAgents(dir), ['./.claude-plugin/agents/link.md']);
 });
 
 test('ignores files in agents/ that are not .md agents', () => {
-  const dir = pluginWith({
-    'a.md': agent('name: a\ndescription: d\nreadonly: true'),
-    'README.txt': 'notes',
+  const dir = pluginWith({ 'a.md': READONLY, 'README.txt': 'readonly: true' });
+  assert.deepEqual(syncPluginAgents(dir), ['./.claude-plugin/agents/a.md']);
+});
+
+test('returns null for a plugin without an agents/ folder', () => {
+  assert.equal(syncPluginAgents(mkdtempSync(join(tmpdir(), 'claude-agents-'))), null);
+});
+
+test('removes its own stale copies once no agent needs adapting', () => {
+  const dir = pluginWith({ 'a.md': READONLY });
+  syncPluginAgents(dir);
+  writeFileSync(join(dir, 'agents', 'a.md'), PLAIN);
+  assert.equal(syncPluginAgents(dir), null);
+  assert.equal(existsSync(join(dir, '.claude-plugin/agents')), false);
+});
+
+test('replaces a stale copy whose source was deleted', () => {
+  const dir = pluginWith({ 'a.md': READONLY, 'b.md': READONLY });
+  syncPluginAgents(dir);
+  writeFileSync(join(dir, 'agents', 'b.md'), PLAIN);
+  syncPluginAgents(dir);
+  assert.equal(existsSync(join(dir, '.claude-plugin/agents/b.md')), false);
+});
+
+for (const files of [{ 'a.md': READONLY }, { 'b.md': PLAIN }]) {
+  test(`refuses to delete a .claude-plugin/agents folder it did not generate (${Object.keys(files)})`, () => {
+    const dir = pluginWith(files);
+    mkdirSync(join(dir, '.claude-plugin/agents'), { recursive: true });
+    writeFileSync(join(dir, '.claude-plugin/agents/upstream.md'), 'theirs');
+    assert.throws(() => syncPluginAgents(dir), /not generated here/);
+    assert.equal(readFileSync(join(dir, '.claude-plugin/agents/upstream.md'), 'utf-8'), 'theirs');
   });
-  assert.deepEqual(syncPluginAgents(dir), ['./agents/claude-code/a.md']);
+}
+
+test('allows agent subfolders when nothing needs adapting', () => {
+  const dir = pluginWith({ 'b.md': PLAIN });
+  mkdirSync(join(dir, 'agents/extra'));
+  assert.equal(syncPluginAgents(dir), null);
+});
+
+test('refuses subfolders when adapting, and keeps the previous copies', () => {
+  const dir = pluginWith({ 'a.md': READONLY });
+  syncPluginAgents(dir);
+  mkdirSync(join(dir, 'agents/review'));
+  assert.throws(() => syncPluginAgents(dir), /unsupported agent subfolders review/);
+  assert.equal(existsSync(join(dir, '.claude-plugin/agents/a.md')), true);
+});
+
+test('applyAgentsField sets, replaces and removes the agents field', () => {
+  const base = { name: 'p', description: 'd' };
+  assert.deepEqual(applyAgentsField(base, ['./x.md']), { ...base, agents: ['./x.md'] });
+  assert.deepEqual(applyAgentsField({ ...base, agents: ['./old.md'] }, ['./x.md']).agents, ['./x.md']);
+  assert.deepEqual(applyAgentsField({ ...base, agents: ['./old.md'] }, null), base);
+  assert.deepEqual(applyAgentsField(base, null), base);
 });

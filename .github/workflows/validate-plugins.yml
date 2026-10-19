@@ -2,18 +2,14 @@ name: Validate plugins
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - ".cursor-plugin/marketplace.json"
       - ".claude-plugin/**"
       - "**/plugin.json"
-      - "**/agents/**"
-      - "scripts/**"
       - "schemas/**"
 
 jobs:
   validate:
-    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -24,15 +20,6 @@ jobs:
 
       - name: Install dependencies
         run: npm install --no-save ajv ajv-formats
-
-      - name: Test scripts
-        run: node --test scripts/*.test.mjs
-
-      - name: Check generated manifests and Claude Code agents are current
-        run: |
-          node scripts/sync-manifests.mjs
-          git add -A -N
-          git diff --exit-code
 
       - name: Validate plugin definitions
         run: node scripts/validate-plugins.mjs

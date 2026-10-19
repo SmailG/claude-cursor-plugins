@@ -6,7 +6,7 @@
     "email": "plugins@cursor.com"
   },
   "agents": [
-    "./agents/claude-code/ci-watcher.md",
+    "./.claude-plugin/agents/ci-watcher.md",
     "./agents/thermo-nuclear-code-quality-review.md"
   ]
 }

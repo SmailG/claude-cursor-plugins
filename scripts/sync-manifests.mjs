@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, rmSync, readdirSync
 import { resolve, join } from 'path';
 import { fileURLToPath } from 'url';
 
-import { syncPluginAgents } from './claude-agents.mjs';
+import { applyAgentsField, syncPluginAgents } from './claude-agents.mjs';
 
 const root = resolve(fileURLToPath(import.meta.url), '../..');
 
@@ -46,9 +46,7 @@ for (const dir of pluginDirs) {
 for (const dir of pluginDirs) {
   const manifestPath = join(root, dir, '.claude-plugin', 'plugin.json');
   const manifest = readJSON(manifestPath);
-  const { agents: _previous, ...rest } = manifest;
-  const agents = syncPluginAgents(join(root, dir));
-  const next = agents ? { ...rest, agents } : rest;
+  const next = applyAgentsField(manifest, syncPluginAgents(join(root, dir)));
   if (JSON.stringify(next) !== JSON.stringify(manifest)) {
     writeJSON(manifestPath, next);
     console.log(`  ~ ${dir}/.claude-plugin/plugin.json (agents)`);

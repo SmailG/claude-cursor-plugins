@@ -5,6 +5,6 @@
     "name": "Dylan Gattey"
   },
   "agents": [
-    "./agents/claude-code/dyl-agent.md"
+    "./.claude-plugin/agents/dyl-agent.md"
   ]
 }
