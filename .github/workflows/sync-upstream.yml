@@ -37,6 +37,28 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git config core.editor true
 
+      # GitHub's "automatically delete head branches" skips merges made with an app token, such as
+      # the auto-merge below enabled with GITHUB_TOKEN, so merged sync branches are removed here.
+      # A branch that moved after its PR merged is left alone.
+      - name: Delete merged sync branches
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr list --label sync --state merged --limit 100 --json headRefName,headRefOid \
+            --jq '.[] | select(.headRefName | startswith("sync/")) | "\(.headRefName) \(.headRefOid)"' \
+          | while read -r BRANCH MERGED_SHA; do
+              CURRENT_SHA=$(gh api "repos/$GH_REPO/branches/$BRANCH" --jq .commit.sha 2>/dev/null) || continue
+              if [ "$CURRENT_SHA" = "$MERGED_SHA" ]; then
+                if gh api -X DELETE "repos/$GH_REPO/git/refs/heads/$BRANCH"; then
+                  echo "deleted $BRANCH"
+                else
+                  echo "::warning::could not delete $BRANCH"
+                fi
+              else
+                echo "::warning::$BRANCH moved after its PR merged; not deleting it"
+              fi
+            done
+
       - name: Add upstream and fetch
         run: |
           git remote add upstream https://github.com/cursor/plugins.git
@@ -206,7 +228,7 @@ jobs:
             --state open \
             --json number,headRefName \
             --jq '.[] | select(.headRefName | startswith("sync/")) | .number' \
-            | xargs -r -I{} gh pr close {} \
+            | xargs -r -I{} gh pr close {} --delete-branch \
               --comment "Superseded by newer sync PR." \
           || true
 
