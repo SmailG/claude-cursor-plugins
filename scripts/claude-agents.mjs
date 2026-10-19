@@ -18,13 +18,16 @@ const MARKER = '.generated-by-sync-manifests';
 const DENIED_TOOLS = ['Edit', 'Write', 'NotebookEdit', 'Agent'];
 const CLAUDE_MODEL_ALIASES = new Set(['sonnet', 'opus', 'haiku', 'fable', 'inherit']);
 const EFFORT_LEVELS = new Set(['low', 'medium', 'high', 'xhigh', 'max']);
-const FALSY = new Set(['false', 'no', 'off', '0']);
-const TRUTHY = new Set(['true', 'yes', 'on', '1']);
+// YAML 1.2 booleans only: a YAML 1.2 parser reads `no` or `off` as a (truthy) string.
+const FALSY = new Set(['false']);
+const TRUTHY = new Set(['true']);
+const BOM = '\uFEFF';
 const FRONTMATTER = /^---[ \t]*\n([\s\S]*?)\n---[ \t]*(?:\n|$)/;
 const TOP_LEVEL_KEY = /^([A-Za-z_]+)[ \t]*:[ \t]*(.*)$/;
-const CURSOR_KEY_ANYWHERE = /^[ \t]*['"]?(readonly|is_background)['"]?[ \t]*:/im;
-const QUOTED_CURSOR_KEY = /^['"](readonly|is_background)['"][ \t]*:/im;
-const SNIFF_LINES = 40;
+// A Cursor key in any shape: quoted, indented, in a flow map, or as a `? key` complex key.
+const CURSOR_KEY_MENTION = /\b(readonly|is_background)\b['"]?[ \t]*(?::|$)/gim;
+const UNIQUE_KEYS = ['readonly', 'is_background', 'disallowedtools', 'model', 'effort', 'background'];
+const GENERATED_PATH = /^\.\/(agents|\.claude-plugin\/agents)\/[^/]+\.md$/;
 
 // `"True" # note` → `true`
 const normalizeValue = raw =>
@@ -35,6 +38,9 @@ const parseKeys = lines =>
     const kv = line.match(TOP_LEVEL_KEY);
     return kv ? [{ index, key: kv[1].toLowerCase(), value: normalizeValue(kv[2]) }] : [];
   });
+
+const mentionedCursorKeys = text =>
+  new Set([...text.matchAll(CURSOR_KEY_MENTION)].map(m => m[1].toLowerCase()));
 
 // `grok-4.6[effort=xhigh]` → { base: 'grok-4.6', suffix: '', effort: 'xhigh' }
 function splitModel(value) {
@@ -69,9 +75,19 @@ function adaptBackground(value, hasExplicitBackground) {
   return TRUTHY.has(lower) && !hasExplicitBackground ? ['background: true'] : [];
 }
 
+// Throws unless every Cursor key is a plain top-level key and no relevant key repeats.
+function checkKeys(frontmatter, keys, source) {
+  const topLevel = new Set(keys.map(k => k.key));
+  for (const name of mentionedCursorKeys(frontmatter)) {
+    if (!topLevel.has(name)) throw new Error(`${source}: ${name} is not a plain top-level key`);
+  }
+  for (const name of UNIQUE_KEYS) {
+    if (keys.filter(k => k.key === name).length > 1) throw new Error(`${source}: duplicate ${name}`);
+  }
+}
+
 // Returns { [lineIndex]: replacementLines } for one frontmatter block, plus lines to append.
-function planFrontmatter(lines) {
-  const keys = parseKeys(lines);
+function planFrontmatter(lines, keys) {
   const byKey = new Map(keys.map(k => [k.key, k]));
   const replacements = new Map();
   const append = [];
@@ -92,7 +108,8 @@ function planFrontmatter(lines) {
     replacements.set(background.index, adaptBackground(background.value, byKey.has('background')));
   }
 
-  for (const model of keys.filter(k => k.key === 'model')) {
+  const model = byKey.get('model');
+  if (model) {
     const { lines: modelLines, effort } = adaptModel(model.value);
     if (modelLines[0] !== lines[model.index]) replacements.set(model.index, modelLines);
     if (effort && !byKey.has('effort')) append.push(`effort: ${effort}`);
@@ -103,20 +120,20 @@ function planFrontmatter(lines) {
 
 // Returns the adapted file text, or null when the agent needs no change.
 export function adaptAgent(text, source = 'the upstream agent') {
-  const bom = text.startsWith('\uFEFF') ? '\uFEFF' : '';
+  const bom = text.startsWith(BOM) ? BOM : '';
   const eol = text.includes('\r\n') ? '\r\n' : '\n';
   const body = text.slice(bom.length).replace(/\r\n/g, '\n');
   const match = body.match(FRONTMATTER);
 
   if (!match) {
-    const head = body.split('\n').slice(0, SNIFF_LINES).join('\n');
-    if (CURSOR_KEY_ANYWHERE.test(head)) throw new Error(`${source}: Cursor keys outside frontmatter`);
+    if (mentionedCursorKeys(body).size > 0) throw new Error(`${source}: Cursor keys outside frontmatter`);
     return null;
   }
 
-  if (QUOTED_CURSOR_KEY.test(match[1])) throw new Error(`${source}: quoted Cursor key`);
   const lines = match[1].split('\n');
-  const { replacements, append } = planFrontmatter(lines);
+  const keys = parseKeys(lines);
+  checkKeys(match[1], keys, source);
+  const { replacements, append } = planFrontmatter(lines, keys);
   if (replacements.size === 0 && append.length === 0) return null;
 
   const adapted = lines.flatMap((line, i) => replacements.get(i) ?? [line]);
@@ -130,13 +147,29 @@ const isAgentFile = (dir, entry) =>
   entry.name.endsWith('.md') &&
   (entry.isFile() || (entry.isSymbolicLink() && statSync(join(dir, entry.name)).isFile()));
 
+// Relative paths of the .md agents in agents/ subfolders, which Claude Code also scans.
+function nestedAgents(agentsDir, prefix = '') {
+  return readdirSync(join(agentsDir, prefix), { withFileTypes: true }).flatMap(entry => {
+    const rel = join(prefix, entry.name);
+    if (entry.isDirectory()) return nestedAgents(agentsDir, rel);
+    return prefix && isAgentFile(join(agentsDir, prefix), entry) ? [rel] : [];
+  });
+}
+
+// Deletes the generated folder, refusing if it holds anything the generator did not write.
 function clearGenerated(generatedDir) {
   if (!existsSync(generatedDir)) return;
-  if (!existsSync(join(generatedDir, MARKER))) {
+  const markerPath = join(generatedDir, MARKER);
+  if (!existsSync(markerPath)) {
     throw new Error(`${generatedDir} exists but was not generated here; refusing to delete it`);
   }
+  const written = new Set(readFileSync(markerPath, 'utf-8').split('\n').filter(Boolean));
+  const foreign = readdirSync(generatedDir).filter(f => f !== MARKER && !written.has(f));
+  if (foreign.length > 0) throw new Error(`${generatedDir} holds files not generated here: ${foreign}`);
   rmSync(generatedDir, { recursive: true });
 }
+
+const readAgent = (agentsDir, file) => adaptAgent(readFileSync(join(agentsDir, file), 'utf-8'), `agents/${file}`);
 
 // Regenerates <pluginDir>/.claude-plugin/agents/ and returns the manifest `agents` paths, or
 // null when every agent loads correctly from the default scan.
@@ -145,30 +178,38 @@ export function syncPluginAgents(pluginDir) {
   const generatedDir = join(pluginDir, GENERATED_DIR);
   const entries = existsSync(agentsDir) ? readdirSync(agentsDir, { withFileTypes: true }) : [];
   const files = entries.filter(e => isAgentFile(agentsDir, e)).map(e => e.name).sort();
-  const adapted = new Map(
-    files
-      .map(f => [f, adaptAgent(readFileSync(join(agentsDir, f), 'utf-8'), `agents/${f}`)])
-      .filter(([, text]) => text !== null),
-  );
+  const adapted = new Map(files.map(f => [f, readAgent(agentsDir, f)]).filter(([, text]) => text !== null));
 
+  // Fail before touching anything: a nested agent would load unadapted, and a manifest list
+  // would silently drop agents in subfolders.
+  const nested = entries.some(e => e.isDirectory()) ? nestedAgents(agentsDir) : [];
+  const nestedAdapted = nested.filter(f => readAgent(agentsDir, f) !== null);
+  if (nestedAdapted.length > 0) throw new Error(`${agentsDir}: nested agents need adapting: ${nestedAdapted}`);
   if (adapted.size === 0) {
     clearGenerated(generatedDir);
     return null;
   }
-  // A manifest list would silently drop agents in subfolders; fail before touching anything.
-  const nested = entries.filter(e => e.isDirectory()).map(e => e.name);
-  if (nested.length > 0) throw new Error(`${agentsDir}: unsupported agent subfolders ${nested}`);
+  const subfolders = entries.filter(e => e.isDirectory()).map(e => e.name);
+  if (subfolders.length > 0) throw new Error(`${agentsDir}: unsupported agent subfolders ${subfolders}`);
 
   clearGenerated(generatedDir);
   mkdirSync(generatedDir, { recursive: true });
-  writeFileSync(join(generatedDir, MARKER), 'Regenerated by scripts/sync-manifests.mjs.\n');
+  writeFileSync(join(generatedDir, MARKER), [...adapted.keys()].join('\n') + '\n');
   for (const [file, text] of adapted) writeFileSync(join(generatedDir, file), text);
 
   return files.map(f => (adapted.has(f) ? `./${GENERATED_DIR}/${f}` : `./agents/${f}`));
 }
 
+const isGeneratedAgentsField = value =>
+  value === undefined ||
+  (Array.isArray(value) && value.every(p => typeof p === 'string' && GENERATED_PATH.test(p)));
+
 // The manifest with its `agents` field set to `agents`, or removed when `agents` is null.
+// Refuses to replace an `agents` field this script did not write.
 export function applyAgentsField(manifest, agents) {
-  const { agents: _previous, ...rest } = manifest;
+  const { agents: previous, ...rest } = manifest;
+  if (!isGeneratedAgentsField(previous)) {
+    throw new Error(`manifest "${manifest.name}" sets its own agents field; merge it by hand`);
+  }
   return agents ? { ...rest, agents } : rest;
 }

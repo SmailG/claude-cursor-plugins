@@ -53,13 +53,15 @@ for (const dir of pluginDirs) {
   }
 }
 
-// Remove .claude-plugin/ for plugins deleted upstream
+// Remove .claude-plugin/ for plugins deleted upstream: the folder holds nothing else. A folder
+// with other content is a Claude-native plugin upstream ships, so leave it alone.
 for (const name of readdirSync(root)) {
   if (SKIP.has(name) || name.startsWith('.') || pluginDirSet.has(name)) continue;
   const full = join(root, name);
   if (!existsSync(full) || !statSync(full).isDirectory()) continue;
   const claudeDir = join(full, '.claude-plugin');
-  if (existsSync(join(claudeDir, 'plugin.json'))) {
+  const onlyClaudeDir = readdirSync(full).every(entry => entry === '.claude-plugin');
+  if (onlyClaudeDir && existsSync(join(claudeDir, 'plugin.json'))) {
     rmSync(claudeDir, { recursive: true });
     console.log(`  - ${name}/.claude-plugin/`);
     removed++;

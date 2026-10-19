@@ -11,6 +11,7 @@ on:
       - "scripts/**"
       - "*/agents/**"
       - "*/.claude-plugin/**"
+      - "*/.cursor-plugin/**"
       - ".claude-plugin/**"
       - ".github/workflows/fork-checks.yml"
 
@@ -26,7 +27,7 @@ jobs:
           node-version: 20
 
       - name: Test the agent converter
-        run: node --test scripts/*.test.mjs
+        run: node --test scripts/claude-agents.test.mjs
 
       - name: Generated agents and manifests are current
         run: |

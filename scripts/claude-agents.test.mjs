@@ -18,7 +18,7 @@ test('returns null when no Cursor-only key is present', () => {
   assert.equal(adaptAgent(agent('name: a\ndescription: d\nmodel: inherit')), null);
 });
 
-for (const value of ['true', '"true"', "'true'", 'True', 'yes', 'true # reads only', 'maybe']) {
+for (const value of ['true', '"true"', "'true'", 'True', 'yes', 'no', 'off', '0', 'true # reads only', 'maybe']) {
   test(`readonly: ${value} denies the write tools (fails closed)`, () => {
     const out = adaptFm(`readonly: ${value}`);
     denies(out);
@@ -26,7 +26,7 @@ for (const value of ['true', '"true"', "'true'", 'True', 'yes', 'true # reads on
   });
 }
 
-for (const value of ['false', '"false"', 'No', 'off', '0']) {
+for (const value of ['false', '"false"', 'False', 'FALSE', 'false # writes']) {
   test(`readonly: ${value} drops the key without a deny list`, () => {
     assert.doesNotMatch(adaptFm(`readonly: ${value}`), /readonly|disallowedTools/i);
   });
@@ -36,8 +36,38 @@ test('matches the readonly key case-insensitively and with space before the colo
   denies(adaptFm('Readonly : true'));
 });
 
-test('throws on a quoted Cursor key it would otherwise miss', () => {
-  assert.throws(() => adaptAgent(agent('name: a\ndescription: d\n"readonly": true')), /quoted/);
+const HIDDEN_KEYS = {
+  'a double-quoted key': '"readonly": true',
+  'an upper-case quoted key': '"READONLY": true',
+  'a single-quoted key': "'is_background': true",
+  'an indented key': '  readonly: true',
+  'a tab-indented key': '\treadonly: true',
+  'a flow map': 'meta: {readonly: true}',
+  'a complex key': '? is_background\n: true',
+};
+for (const [shape, frontmatter] of Object.entries(HIDDEN_KEYS)) {
+  test(`throws on a Cursor key hidden in ${shape}`, () => {
+    assert.throws(() => adaptAgent(agent(`name: a\ndescription: d\n${frontmatter}`)), /not a plain top-level key/);
+  });
+}
+
+test('throws on a Cursor key hidden in fully indented frontmatter', () => {
+  assert.throws(() => adaptAgent(agent('  name: a\n  readonly: true')), /not a plain top-level key/);
+});
+
+test('allows the word readonly in prose', () => {
+  assert.equal(adaptAgent(agent('name: a\ndescription: Runs readonly checks on is_background jobs')), null);
+});
+
+for (const key of ['readonly', 'is_background', 'disallowedTools', 'model', 'effort', 'background']) {
+  test(`throws on a duplicate ${key} key`, () => {
+    const text = agent(`name: a\ndescription: d\nreadonly: true\n${key}: false\n${key}: false`);
+    assert.throws(() => adaptAgent(text), new RegExp(`duplicate ${key.toLowerCase()}`));
+  });
+}
+
+test('ignores an empty entry in an existing disallowedTools', () => {
+  assert.match(adaptFm('disallowedTools: Bash,\nreadonly: true'), /^disallowedTools: Bash, Edit, Write, NotebookEdit, Agent$/m);
 });
 
 test('merges readonly into an existing scalar disallowedTools without duplicating the key', () => {
@@ -53,7 +83,7 @@ for (const list of ['disallowedTools:\n  - Bash', 'disallowedTools: [Bash]']) {
   });
 }
 
-for (const value of ['true', 'yes', 'on', '1', '"True"']) {
+for (const value of ['true', 'TRUE', '"True"']) {
   test(`maps is_background: ${value} to background: true`, () => {
     const out = adaptFm(`is_background: ${value}`);
     assert.match(out, /^background: true$/m);
@@ -61,7 +91,7 @@ for (const value of ['true', 'yes', 'on', '1', '"True"']) {
   });
 }
 
-for (const value of ['false', 'no', 'off', '0']) {
+for (const value of ['false', 'False']) {
   test(`drops is_background: ${value}`, () => {
     assert.doesNotMatch(adaptFm(`is_background: ${value}`), /background/);
   });
@@ -73,9 +103,11 @@ test('keeps an explicit background key instead of adding a second one', () => {
   ]);
 });
 
-test('throws on an is_background value it cannot read', () => {
-  assert.throws(() => adaptAgent(agent('name: a\ndescription: d\nis_background: later')), /is_background/);
-});
+for (const value of ['later', 'yes', 'no', '1']) {
+  test(`throws on an is_background value it cannot read (${value})`, () => {
+    assert.throws(() => adaptAgent(agent(`name: a\ndescription: d\nis_background: ${value}`)), /is_background/);
+  });
+}
 
 for (const value of ['fast', "'fast'", 'fast # cheap', 'Fast']) {
   test(`model: ${value} maps to haiku`, () => {
@@ -88,6 +120,14 @@ for (const model of ['sonnet', 'opus', 'haiku', 'fable', 'inherit', 'claude-opus
     assert.equal(adaptAgent(agent(`name: a\ndescription: d\nmodel: ${model}`)), null);
   });
 }
+
+test('trims space before a model suffix', () => {
+  assert.match(adaptFm('model: sonnet [1m]'), /^model: sonnet\[1m\]$/m);
+});
+
+test('drops a model value with more than one suffix', () => {
+  assert.doesNotMatch(adaptFm('model: sonnet[x][y]'), /model:/);
+});
 
 test('normalizes a quoted Claude model instead of dropping it', () => {
   assert.match(adaptFm('model: "sonnet"'), /^model: sonnet$/m);
@@ -109,6 +149,12 @@ test('splits a Claude model with an effort suffix into model and effort', () => 
   assert.match(out, /^effort: high$/m);
 });
 
+for (const level of ['low', 'medium', 'high', 'xhigh', 'max']) {
+  test(`keeps the effort level ${level}`, () => {
+    assert.match(adaptFm(`model: grok[effort=${level}]`), new RegExp(`^effort: ${level}$`, 'm'));
+  });
+}
+
 test('reads the effort level case-insensitively', () => {
   assert.match(adaptFm('model: grok[effort=High]'), /^effort: high$/m);
 });
@@ -129,6 +175,10 @@ test('marks the copy as generated from its source', () => {
 test('leaves the body untouched, including lines that look like frontmatter', () => {
   const body = '\n# Body\n\n---\nreadonly: true\nmodel: fast\n';
   assert.ok(adaptAgent(agent('name: a\ndescription: d\nreadonly: true', body)).endsWith(`---\n${body}`));
+});
+
+test('keeps blank lines in the frontmatter', () => {
+  assert.match(adaptFm('readonly: true\n\nmodel: inherit'), /\n\nmodel: inherit/);
 });
 
 test('leaves indented keys inside a block value untouched', () => {
@@ -231,10 +281,26 @@ for (const files of [{ 'a.md': READONLY }, { 'b.md': PLAIN }]) {
   });
 }
 
-test('allows agent subfolders when nothing needs adapting', () => {
+test('allows agent subfolders whose agents need no adapting', () => {
   const dir = pluginWith({ 'b.md': PLAIN });
-  mkdirSync(join(dir, 'agents/extra'));
+  mkdirSync(join(dir, 'agents/extra/deeper'), { recursive: true });
+  writeFileSync(join(dir, 'agents/extra/deeper/c.md'), PLAIN);
   assert.equal(syncPluginAgents(dir), null);
+});
+
+test('refuses a nested agent that needs adapting, even when the top level needs none', () => {
+  const dir = pluginWith({ 'b.md': PLAIN });
+  mkdirSync(join(dir, 'agents/review/deeper'), { recursive: true });
+  writeFileSync(join(dir, 'agents/review/deeper/ro.md'), READONLY);
+  assert.throws(() => syncPluginAgents(dir), /nested agents need adapting: review\/deeper\/ro\.md/);
+});
+
+test('refuses to delete a file it did not write inside its own folder', () => {
+  const dir = pluginWith({ 'a.md': READONLY });
+  syncPluginAgents(dir);
+  writeFileSync(join(dir, '.claude-plugin/agents/upstream.md'), 'theirs');
+  assert.throws(() => syncPluginAgents(dir), /not generated here: upstream\.md/);
+  assert.equal(readFileSync(join(dir, '.claude-plugin/agents/upstream.md'), 'utf-8'), 'theirs');
 });
 
 test('refuses subfolders when adapting, and keeps the previous copies', () => {
@@ -248,7 +314,14 @@ test('refuses subfolders when adapting, and keeps the previous copies', () => {
 test('applyAgentsField sets, replaces and removes the agents field', () => {
   const base = { name: 'p', description: 'd' };
   assert.deepEqual(applyAgentsField(base, ['./x.md']), { ...base, agents: ['./x.md'] });
-  assert.deepEqual(applyAgentsField({ ...base, agents: ['./old.md'] }, ['./x.md']).agents, ['./x.md']);
-  assert.deepEqual(applyAgentsField({ ...base, agents: ['./old.md'] }, null), base);
+  assert.deepEqual(applyAgentsField({ ...base, agents: ['./.claude-plugin/agents/old.md'] }, ['./x.md']).agents, ['./x.md']);
+  assert.deepEqual(applyAgentsField({ ...base, agents: ['./.claude-plugin/agents/old.md'] }, null), base);
   assert.deepEqual(applyAgentsField(base, null), base);
 });
+
+for (const agents of [['./extra/more.md'], './agents/', [42], ['./agents/sub/x.md']]) {
+  test(`applyAgentsField refuses to replace an agents field it did not write (${JSON.stringify(agents)})`, () => {
+    assert.throws(() => applyAgentsField({ name: 'p', agents }, ['./agents/x.md']), /sets its own agents field/);
+    assert.throws(() => applyAgentsField({ name: 'p', agents }, null), /sets its own agents field/);
+  });
+}

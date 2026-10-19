@@ -24,6 +24,8 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
+          # The steps below run upstream's scripts; only the push and PR steps get a token.
+          persist-credentials: false
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
@@ -155,16 +157,31 @@ jobs:
       - name: Check fork scripts against the merged tree
         if: steps.check.outputs.changed == 'true'
         run: |
-          node --test scripts/*.test.mjs
+          node --test scripts/claude-agents.test.mjs
+          npm install --no-save --silent ajv ajv-formats
+          node scripts/validate-plugins.mjs
           if [ -f scripts/generate-pstack-harness-trees.mjs ]; then
             node scripts/generate-pstack-harness-trees.mjs --check
           fi
 
+      # GITHUB_TOKEN cannot push commits that touch .github/workflows, and "workflows" is not a
+      # permission it can be granted. SYNC_TOKEN is an optional fine-grained token for this repo
+      # with Contents, Pull requests and Workflows set to read and write.
       - name: Push sync branch
         if: steps.check.outputs.changed == 'true'
         env:
           BRANCH: ${{ steps.branch.outputs.branch }}
-        run: git push --force-with-lease origin "$BRANCH"
+          SYNC_TOKEN: ${{ secrets.SYNC_TOKEN }}
+          GITHUB_TOKEN_FALLBACK: ${{ github.token }}
+        run: |
+          if [ -z "$SYNC_TOKEN" ] && [ -n "$(git log --format= --name-only origin/main..HEAD -- .github/workflows)" ]; then
+            echo "::error::This sync carries commits that change .github/workflows, which GITHUB_TOKEN cannot push. Add a SYNC_TOKEN secret: a fine-grained token for this repo with Contents, Pull requests and Workflows set to read and write."
+            exit 1
+          fi
+          AUTH=$(printf 'x-access-token:%s' "${SYNC_TOKEN:-$GITHUB_TOKEN_FALLBACK}" | base64 | tr -d '\n')
+          echo "::add-mask::$AUTH"
+          git -c http.https://github.com/.extraheader="AUTHORIZATION: basic $AUTH" \
+            push --force-with-lease origin "$BRANCH"
 
       - name: Ensure sync label exists
         if: steps.check.outputs.changed == 'true'
@@ -193,7 +210,7 @@ jobs:
       - name: Create pull request
         if: steps.check.outputs.changed == 'true'
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.SYNC_TOKEN || github.token }}
           PR_TITLE: ${{ steps.branch.outputs.pr_title }}
           BRANCH: ${{ steps.branch.outputs.branch }}
           BASE_SHA: ${{ steps.check.outputs.base_sha }}
@@ -244,3 +261,19 @@ jobs:
             echo "- **Upstream SHA:** $UPSTREAM_SHA"
             echo "- **Commits synced:** $COUNT"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      # Sync PRs merge unattended, so a failed run has to say so somewhere a person will see.
+      - name: Report failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh label create sync-failed --color d73a4a --description "Upstream sync failed" --force
+          ISSUE=$(gh issue list --label sync-failed --state open --json number --jq '.[0].number // empty')
+          if [ -n "$ISSUE" ]; then
+            gh issue comment "$ISSUE" --body "Failed again: $RUN_URL"
+          else
+            gh issue create --title "Upstream sync is failing" --label sync-failed \
+              --body "The sync-upstream workflow failed: $RUN_URL. Close this issue once a sync succeeds."
+          fi
