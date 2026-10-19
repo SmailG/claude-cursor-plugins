@@ -53,15 +53,19 @@ for (const list of ['disallowedTools:\n  - Bash', 'disallowedTools: [Bash]']) {
   });
 }
 
-test('maps is_background: true to background: true', () => {
-  const out = adaptFm('is_background: true');
-  assert.match(out, /^background: true$/m);
-  assert.doesNotMatch(out, /is_background/);
-});
+for (const value of ['true', 'yes', 'on', '1', '"True"']) {
+  test(`maps is_background: ${value} to background: true`, () => {
+    const out = adaptFm(`is_background: ${value}`);
+    assert.match(out, /^background: true$/m);
+    assert.doesNotMatch(out, /is_background/);
+  });
+}
 
-test('drops is_background: false', () => {
-  assert.doesNotMatch(adaptFm('is_background: false'), /background/);
-});
+for (const value of ['false', 'no', 'off', '0']) {
+  test(`drops is_background: ${value}`, () => {
+    assert.doesNotMatch(adaptFm(`is_background: ${value}`), /background/);
+  });
+}
 
 test('keeps an explicit background key instead of adding a second one', () => {
   assert.deepEqual(adaptFm('background: false\nis_background: true').match(/background:.*/g), [
@@ -103,6 +107,10 @@ test('splits a Claude model with an effort suffix into model and effort', () => 
   const out = adaptFm('model: claude-opus-5[effort=high]');
   assert.match(out, /^model: claude-opus-5$/m);
   assert.match(out, /^effort: high$/m);
+});
+
+test('reads the effort level case-insensitively', () => {
+  assert.match(adaptFm('model: grok[effort=High]'), /^effort: high$/m);
 });
 
 test('does not override an existing effort key', () => {
