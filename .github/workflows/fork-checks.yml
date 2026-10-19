@@ -1,8 +1,8 @@
 name: Fork checks
 
-# Fork-only: upstream has no such workflow, so a sync never overwrites this file. Sync PRs are
-# opened with GITHUB_TOKEN and trigger no workflows; sync-upstream.yml runs the same checks
-# itself before it pushes.
+# Fork-only: upstream has no such workflow, so a sync never overwrites this file. A sync PR
+# opened with GITHUB_TOKEN triggers no workflows (one opened with SYNC_TOKEN does), so
+# sync-upstream.yml runs the same checks itself before it pushes.
 
 on:
   pull_request:

@@ -1,8 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, existsSync, readFileSync, symlinkSync } from 'fs';
+import { execFileSync } from 'child_process';
+import { cpSync, mkdtempSync, mkdirSync, writeFileSync, existsSync, readFileSync, symlinkSync } from 'fs';
 import { tmpdir } from 'os';
-import { join } from 'path';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
 
 import { adaptAgent, applyAgentsField, syncPluginAgents } from './claude-agents.mjs';
 
@@ -18,7 +20,7 @@ test('returns null when no Cursor-only key is present', () => {
   assert.equal(adaptAgent(agent('name: a\ndescription: d\nmodel: inherit')), null);
 });
 
-for (const value of ['true', '"true"', "'true'", 'True', 'yes', 'no', 'off', '0', 'true # reads only', 'maybe']) {
+for (const value of ['true', '"true"', "'true'", 'True', 'yes', 'no', 'off', '0', 'true # reads only', 'maybe', '"false"', "'false'", 'false#x']) {
   test(`readonly: ${value} denies the write tools (fails closed)`, () => {
     const out = adaptFm(`readonly: ${value}`);
     denies(out);
@@ -26,7 +28,7 @@ for (const value of ['true', '"true"', "'true'", 'True', 'yes', 'no', 'off', '0'
   });
 }
 
-for (const value of ['false', '"false"', 'False', 'FALSE', 'false # writes']) {
+for (const value of ['false', 'False', 'FALSE', 'false # writes']) {
   test(`readonly: ${value} drops the key without a deny list`, () => {
     assert.doesNotMatch(adaptFm(`readonly: ${value}`), /readonly|disallowedTools/i);
   });
@@ -81,7 +83,7 @@ test('merges readonly into an existing scalar disallowedTools without duplicatin
   ]);
 });
 
-for (const list of ['disallowedTools:\n  - Bash', 'disallowedTools: [Bash]']) {
+for (const list of ['disallowedTools:\n  - Bash', 'disallowedTools: [Bash]', 'disallowedTools: >\n  Bash', 'disallowedTools: |\n  Bash']) {
   test(`refuses to merge into a YAML-list disallowedTools (${list.split('\n')[0]})`, () => {
     const text = agent(`name: a\ndescription: d\n${list}\nreadonly: true`);
     assert.throws(() => adaptAgent(text), /YAML-list/);
@@ -187,11 +189,19 @@ test('keeps blank lines in the frontmatter', () => {
 });
 
 test('leaves indented keys inside a block value untouched', () => {
-  const out = adaptFm('readonly: true\nnotes: |\n  readonly: false\n  model: fast');
-  denies(out);
-  assert.match(out, /^  readonly: false$/m);
-  assert.match(out, /^  model: fast$/m);
+  assert.match(adaptFm('readonly: true\nnotes: |\n  model: fast'), /^  model: fast$/m);
 });
+
+test('throws when a Cursor key appears both plainly and in another shape', () => {
+  assert.throws(() => adaptAgent(agent('name: a\nreadonly: false\n"readonly": true')), /not a plain top-level key/);
+  assert.throws(() => adaptAgent(agent('name: a\nreadonly: true\nnotes: |\n  readonly: false')), /not a plain top-level key/);
+});
+
+for (const key of ['"\\u0072eadonly": true', "'r\\x65adonly': true", '? r\\x65adonly\n: true']) {
+  test(`throws on an escaped key that could spell a Cursor key (${key.split('\n')[0]})`, () => {
+    assert.throws(() => adaptAgent(agent(`name: a\n${key}`)), /escaped quoted or complex key/);
+  });
+}
 
 test('handles CRLF line endings and keeps them', () => {
   const out = adaptAgent(agent('name: a\ndescription: d\nreadonly: true').replace(/\n/g, '\r\n'));
@@ -286,6 +296,13 @@ for (const files of [{ 'a.md': READONLY }, { 'b.md': PLAIN }]) {
   });
 }
 
+test('refuses a stray copy of an agent it did not adapt', () => {
+  const dir = pluginWith({ 'a.md': READONLY, 'z.md': PLAIN });
+  syncPluginAgents(dir);
+  writeFileSync(join(dir, '.claude-plugin/agents/z.md'), PLAIN);
+  assert.throws(() => syncPluginAgents(dir), /not generated here: z\.md/);
+});
+
 test('allows agent subfolders whose agents need no adapting', () => {
   const dir = pluginWith({ 'b.md': PLAIN });
   mkdirSync(join(dir, 'agents/extra/deeper'), { recursive: true });
@@ -324,9 +341,24 @@ test('applyAgentsField sets, replaces and removes the agents field', () => {
   assert.deepEqual(applyAgentsField(base, null), base);
 });
 
-for (const agents of [['./extra/more.md'], './agents/', [42], ['./agents/sub/x.md'], ['../agents/x.md']]) {
+for (const agents of [['./extra/more.md'], './agents/', [42], ['./agents/sub/x.md'], ['../agents/x.md'], ['./agents/a.md', './custom/b.md']]) {
   test(`applyAgentsField refuses to replace an agents field it did not write (${JSON.stringify(agents)})`, () => {
     assert.throws(() => applyAgentsField({ name: 'p', agents }, ['./agents/x.md']), /sets its own agents field/);
     assert.throws(() => applyAgentsField({ name: 'p', agents }, null), /sets its own agents field/);
   });
 }
+
+test('sync-manifests removes .claude-plugin/ only from plugin folders deleted upstream', () => {
+  const root = mkdtempSync(join(tmpdir(), 'sync-manifests-'));
+  cpSync(dirname(fileURLToPath(import.meta.url)), join(root, 'scripts'), { recursive: true });
+  mkdirSync(join(root, '.claude-plugin'));
+  writeFileSync(join(root, '.claude-plugin/marketplace.json'), JSON.stringify({ name: 'm', owner: {}, plugins: [] }));
+  for (const name of ['gone', 'native']) {
+    mkdirSync(join(root, name, '.claude-plugin'), { recursive: true });
+    writeFileSync(join(root, name, '.claude-plugin/plugin.json'), JSON.stringify({ name }));
+  }
+  writeFileSync(join(root, 'native/README.md'), 'a Claude-native plugin');
+  execFileSync(process.execPath, [join(root, 'scripts/sync-manifests.mjs')], { stdio: 'pipe' });
+  assert.equal(existsSync(join(root, 'gone/.claude-plugin')), false);
+  assert.equal(existsSync(join(root, 'native/.claude-plugin/plugin.json')), true);
+});

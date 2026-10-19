@@ -28,19 +28,27 @@ const TOP_LEVEL_KEY = /^([A-Za-z_]+)[ \t]*:[ \t]*(.*)$/;
 const CURSOR_KEY_MENTION = /\b(readonly|is_background)['"]?[ \t]*(?::|$)/gim;
 const UNIQUE_KEYS = ['readonly', 'is_background', 'disallowedtools', 'model', 'effort', 'background'];
 const GENERATED_PATH = /^\.\/(agents|\.claude-plugin\/agents)\/[^/]+\.md$/;
+// A quoted or `? ` key with a backslash could spell a Cursor key in escapes.
+const ESCAPED_KEY = /^[ \t]*(?:['"]|\?)[^\n]*\\/m;
 
+const stripComment = raw => raw.replace(/\s+#.*$/, '').trim();
 // `"True" # note` → `true`
-const normalizeValue = raw =>
-  raw.replace(/\s+#.*$/, '').trim().replace(/^(['"])(.*)\1$/, '$2').trim();
+const normalizeValue = raw => stripComment(raw).replace(/^(['"])(.*)\1$/, '$2').trim();
 
 const parseKeys = lines =>
   lines.flatMap((line, index) => {
     const kv = line.match(TOP_LEVEL_KEY);
-    return kv ? [{ index, key: kv[1].toLowerCase(), value: normalizeValue(kv[2]) }] : [];
+    if (!kv) return [];
+    const quoted = /^['"]/.test(stripComment(kv[2]));
+    return [{ index, key: kv[1].toLowerCase(), value: normalizeValue(kv[2]), quoted }];
   });
 
-const mentionedCursorKeys = text =>
-  new Set([...text.matchAll(CURSOR_KEY_MENTION)].map(m => m[1].toLowerCase()));
+// How often each Cursor key appears in any shape.
+const cursorKeyMentions = text =>
+  [...text.matchAll(CURSOR_KEY_MENTION)].reduce((counts, m) => {
+    const name = m[1].toLowerCase();
+    return new Map(counts).set(name, (counts.get(name) ?? 0) + 1);
+  }, new Map());
 
 // `grok-4.6[effort=xhigh]` → { base: 'grok-4.6', suffix: '', effort: 'xhigh' }
 function splitModel(value) {
@@ -62,8 +70,8 @@ function adaptModel(value) {
 
 function deniedTools(existing) {
   if (existing === undefined) return DENIED_TOOLS;
-  if (existing.value === '' || existing.value.startsWith('[')) {
-    throw new Error('readonly agent with a YAML-list disallowedTools; merge it by hand');
+  if (existing.value === '' || /^[[>|]/.test(existing.value)) {
+    throw new Error('readonly agent with a YAML-list or block disallowedTools; merge it by hand');
   }
   const current = existing.value.split(',').map(t => t.trim()).filter(Boolean);
   return [...new Set([...current, ...DENIED_TOOLS])];
@@ -77,9 +85,10 @@ function adaptBackground(value, hasExplicitBackground) {
 
 // Throws unless every Cursor key is a plain top-level key and no relevant key repeats.
 function checkKeys(frontmatter, keys, source) {
-  const topLevel = new Set(keys.map(k => k.key));
-  for (const name of mentionedCursorKeys(frontmatter)) {
-    if (!topLevel.has(name)) throw new Error(`${source}: ${name} is not a plain top-level key`);
+  if (ESCAPED_KEY.test(frontmatter)) throw new Error(`${source}: escaped quoted or complex key`);
+  for (const [name, count] of cursorKeyMentions(frontmatter)) {
+    const plain = keys.filter(k => k.key === name).length;
+    if (count !== plain) throw new Error(`${source}: ${name} is not a plain top-level key`);
   }
   for (const name of UNIQUE_KEYS) {
     if (keys.filter(k => k.key === name).length > 1) throw new Error(`${source}: duplicate ${name}`);
@@ -95,7 +104,8 @@ function planFrontmatter(lines, keys) {
   const readonly = byKey.get('readonly');
   if (readonly) {
     replacements.set(readonly.index, []);
-    if (!FALSY.has(readonly.value.toLowerCase())) {
+    // A quoted "false" is a string, which Cursor reads as true.
+    if (readonly.quoted || !FALSY.has(readonly.value.toLowerCase())) {
       const existing = byKey.get('disallowedtools');
       const tools = `disallowedTools: ${deniedTools(existing).join(', ')}`;
       if (existing) replacements.set(existing.index, [tools]);
@@ -126,7 +136,7 @@ export function adaptAgent(text, source = 'the upstream agent') {
   const match = body.match(FRONTMATTER);
 
   if (!match) {
-    if (mentionedCursorKeys(body).size > 0) throw new Error(`${source}: Cursor keys outside frontmatter`);
+    if (cursorKeyMentions(body).size > 0) throw new Error(`${source}: Cursor keys outside frontmatter`);
     return null;
   }
 

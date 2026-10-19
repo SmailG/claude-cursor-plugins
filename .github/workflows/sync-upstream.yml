@@ -166,7 +166,10 @@ jobs:
 
       # GITHUB_TOKEN cannot push commits that touch .github/workflows, and "workflows" is not a
       # permission it can be granted. SYNC_TOKEN is an optional fine-grained token for this repo
-      # with Contents, Pull requests and Workflows set to read and write.
+      # with Contents, Pull requests and Workflows set to read and write; give it an expiry.
+      # Earlier steps in this job ran upstream code, which could still reach this step through the
+      # runner (GITHUB_ENV, PATH). That grants nothing upstream lacks: its content lands on main
+      # through this unattended sync anyway. Hooks are disabled for the push all the same.
       - name: Push sync branch
         if: steps.check.outputs.changed == 'true'
         env:
@@ -174,13 +177,13 @@ jobs:
           SYNC_TOKEN: ${{ secrets.SYNC_TOKEN }}
           GITHUB_TOKEN_FALLBACK: ${{ github.token }}
         run: |
-          if [ -z "$SYNC_TOKEN" ] && [ -n "$(git log --format= --name-only origin/main..HEAD -- .github/workflows)" ]; then
+          if [ -z "$SYNC_TOKEN" ] && [ -n "$(git log --full-history --format= --name-only origin/main..HEAD -- .github/workflows)" ]; then
             echo "::error::This sync carries commits that change .github/workflows, which GITHUB_TOKEN cannot push. Add a SYNC_TOKEN secret: a fine-grained token for this repo with Contents, Pull requests and Workflows set to read and write."
             exit 1
           fi
           AUTH=$(printf 'x-access-token:%s' "${SYNC_TOKEN:-$GITHUB_TOKEN_FALLBACK}" | base64 | tr -d '\n')
           echo "::add-mask::$AUTH"
-          git -c http.https://github.com/.extraheader="AUTHORIZATION: basic $AUTH" \
+          git -c core.hooksPath=/dev/null -c http.https://github.com/.extraheader="AUTHORIZATION: basic $AUTH" \
             push --force-with-lease origin "$BRANCH"
 
       - name: Ensure sync label exists
@@ -261,6 +264,15 @@ jobs:
             echo "- **Upstream SHA:** $UPSTREAM_SHA"
             echo "- **Commits synced:** $COUNT"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Close failure report
+        if: success() && steps.check.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh issue list --label sync-failed --state open --json number --jq '.[].number' \
+            | xargs -r -I{} gh issue close {} --comment "Sync succeeded: $RUN_URL"
 
       # Sync PRs merge unattended, so a failed run has to say so somewhere a person will see.
       - name: Report failure
