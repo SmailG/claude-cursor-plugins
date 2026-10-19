@@ -104,10 +104,20 @@ jobs:
 
           if [ "$MERGE_EXIT" -ne 0 ]; then
             if [ -f .git/MERGE_HEAD ]; then
-              # README.md: take upstream version then rebuild from our template
-              git checkout --theirs README.md 2>/dev/null || true
-              node scripts/rebuild-readme.mjs
-              git add README.md
+              # Fork-generated files: keep our version. The "Sync manifests"
+              # and "Rebuild README" steps below regenerate both from the
+              # merged tree. Upstream now ships its own
+              # .claude-plugin/marketplace.json, so taking theirs would rename
+              # the marketplace and drop every other plugin, and rebuilding
+              # README.md before this conflict is resolved crashes on the
+              # conflict markers.
+              for f in .claude-plugin/marketplace.json README.md; do
+                if git diff --name-only --diff-filter=U | grep -qxF "$f"; then
+                  echo "  resolving conflict (ours, regenerated below): $f"
+                  git checkout --ours "$f"
+                  git add "$f"
+                fi
+              done
 
               # All other conflicts: upstream wins
               git diff --name-only --diff-filter=U | while IFS= read -r f; do
