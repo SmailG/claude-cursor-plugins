@@ -3,6 +3,8 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, rmSync, readdirSync
 import { resolve, join } from 'path';
 import { fileURLToPath } from 'url';
 
+import { syncPluginAgents } from './claude-agents.mjs';
+
 const root = resolve(fileURLToPath(import.meta.url), '../..');
 
 const SKIP = new Set([
@@ -37,6 +39,19 @@ for (const dir of pluginDirs) {
     });
     console.log(`  + ${dir}/.claude-plugin/plugin.json`);
     added++;
+  }
+}
+
+// Point each manifest at Claude Code copies of agents that use Cursor-only frontmatter
+for (const dir of pluginDirs) {
+  const manifestPath = join(root, dir, '.claude-plugin', 'plugin.json');
+  const manifest = readJSON(manifestPath);
+  const { agents: _previous, ...rest } = manifest;
+  const agents = syncPluginAgents(join(root, dir));
+  const next = agents ? { ...rest, agents } : rest;
+  if (JSON.stringify(next) !== JSON.stringify(manifest)) {
+    writeJSON(manifestPath, next);
+    console.log(`  ~ ${dir}/.claude-plugin/plugin.json (agents)`);
   }
 }
 

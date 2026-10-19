@@ -44,7 +44,9 @@ You can install as many plugins as you need:
 
 ## What changed from upstream
 
-This fork adds a `.claude-plugin/` directory at the repo root and inside each plugin, containing the marketplace and plugin manifests required by Claude Code. No plugin logic or rules have been modified — the plugins behave identically to their upstream versions.
+This fork adds a `.claude-plugin/` directory at the repo root and inside each plugin, containing the marketplace and plugin manifests required by Claude Code. No plugin logic or rules have been modified.
+
+Upstream agents use Cursor-only frontmatter that Claude Code ignores, so `scripts/sync-manifests.mjs` generates Claude Code copies under `<plugin>/agents/claude-code/` and lists them in the plugin manifest: `readonly: true` becomes `disallowedTools: Edit, Write, NotebookEdit`, `is_background: true` becomes `background: true`, `model: fast` becomes `haiku`, and a non-Claude model is dropped. The upstream agent files stay untouched.
 
 ## Keeping up to date
 
