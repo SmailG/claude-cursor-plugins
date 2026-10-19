@@ -24,6 +24,8 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
+          # The steps below run upstream's scripts; only the push and PR steps get a token.
+          persist-credentials: false
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
@@ -104,10 +106,20 @@ jobs:
 
           if [ "$MERGE_EXIT" -ne 0 ]; then
             if [ -f .git/MERGE_HEAD ]; then
-              # README.md: take upstream version then rebuild from our template
-              git checkout --theirs README.md 2>/dev/null || true
-              node scripts/rebuild-readme.mjs
-              git add README.md
+              # Fork-generated files: keep our version. The "Sync manifests"
+              # and "Rebuild README" steps below regenerate both from the
+              # merged tree. Upstream now ships its own
+              # .claude-plugin/marketplace.json, so taking theirs would rename
+              # the marketplace and drop every other plugin, and rebuilding
+              # README.md before this conflict is resolved crashes on the
+              # conflict markers.
+              for f in .claude-plugin/marketplace.json README.md; do
+                if git diff --name-only --diff-filter=U | grep -qxF "$f"; then
+                  echo "  resolving conflict (ours, regenerated below): $f"
+                  git checkout --ours "$f"
+                  git add "$f"
+                fi
+              done
 
               # All other conflicts: upstream wins
               git diff --name-only --diff-filter=U | while IFS= read -r f; do
@@ -141,11 +153,38 @@ jobs:
         if: steps.check.outputs.changed == 'true'
         run: git add -A && git commit --amend --no-edit
 
+      # Sync PRs auto-merge and trigger no workflows, so this is the only check on them.
+      - name: Check fork scripts against the merged tree
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          node --test scripts/claude-agents.test.mjs
+          npm install --no-save --silent ajv ajv-formats
+          node scripts/validate-plugins.mjs
+          if [ -f scripts/generate-pstack-harness-trees.mjs ]; then
+            node scripts/generate-pstack-harness-trees.mjs --check
+          fi
+
+      # GITHUB_TOKEN cannot push commits that touch .github/workflows, and "workflows" is not a
+      # permission it can be granted. SYNC_TOKEN is an optional fine-grained token for this repo
+      # with Contents, Pull requests and Workflows set to read and write; give it an expiry.
+      # Earlier steps in this job ran upstream code, which could still reach this step through the
+      # runner (GITHUB_ENV, PATH). That grants nothing upstream lacks: its content lands on main
+      # through this unattended sync anyway. Hooks are disabled for the push all the same.
       - name: Push sync branch
         if: steps.check.outputs.changed == 'true'
         env:
           BRANCH: ${{ steps.branch.outputs.branch }}
-        run: git push --force-with-lease origin "$BRANCH"
+          SYNC_TOKEN: ${{ secrets.SYNC_TOKEN }}
+          GITHUB_TOKEN_FALLBACK: ${{ github.token }}
+        run: |
+          if [ -z "$SYNC_TOKEN" ] && [ -n "$(git log --full-history --format= --name-only origin/main..HEAD -- .github/workflows)" ]; then
+            echo "::error::This sync carries commits that change .github/workflows, which GITHUB_TOKEN cannot push. Add a SYNC_TOKEN secret: a fine-grained token for this repo with Contents, Pull requests and Workflows set to read and write."
+            exit 1
+          fi
+          AUTH=$(printf 'x-access-token:%s' "${SYNC_TOKEN:-$GITHUB_TOKEN_FALLBACK}" | base64 | tr -d '\n')
+          echo "::add-mask::$AUTH"
+          git -c core.hooksPath=/dev/null -c http.https://github.com/.extraheader="AUTHORIZATION: basic $AUTH" \
+            push --force-with-lease origin "$BRANCH"
 
       - name: Ensure sync label exists
         if: steps.check.outputs.changed == 'true'
@@ -174,7 +213,7 @@ jobs:
       - name: Create pull request
         if: steps.check.outputs.changed == 'true'
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.SYNC_TOKEN || github.token }}
           PR_TITLE: ${{ steps.branch.outputs.pr_title }}
           BRANCH: ${{ steps.branch.outputs.branch }}
           BASE_SHA: ${{ steps.check.outputs.base_sha }}
@@ -225,3 +264,28 @@ jobs:
             echo "- **Upstream SHA:** $UPSTREAM_SHA"
             echo "- **Commits synced:** $COUNT"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Close failure report
+        if: success() && steps.check.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh issue list --label sync-failed --state open --json number --jq '.[].number' \
+            | xargs -r -I{} gh issue close {} --comment "Sync succeeded: $RUN_URL"
+
+      # Sync PRs merge unattended, so a failed run has to say so somewhere a person will see.
+      - name: Report failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh label create sync-failed --color d73a4a --description "Upstream sync failed" --force
+          ISSUE=$(gh issue list --label sync-failed --state open --json number --jq '.[0].number // empty')
+          if [ -n "$ISSUE" ]; then
+            gh issue comment "$ISSUE" --body "Failed again: $RUN_URL"
+          else
+            gh issue create --title "Upstream sync is failing" --label sync-failed \
+              --body "The sync-upstream workflow failed: $RUN_URL. Close this issue once a sync succeeds."
+          fi

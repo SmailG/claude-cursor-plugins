@@ -35,6 +35,8 @@ We maintain exactly one commit on top of upstream. Rebase keeps history linear.
 
 ### 4. Handle plugin changes
 
+Run `node scripts/sync-manifests.mjs` after the merge. Besides the manifests, it regenerates the Claude Code agent copies under `<plugin>/.claude-plugin/agents/` and each manifest's `agents` list; never edit those files by hand.
+
 Review the upstream diff for added, removed, or renamed plugin directories.
 
 **For each ADDED plugin:**

@@ -3,6 +3,8 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, rmSync, readdirSync
 import { resolve, join } from 'path';
 import { fileURLToPath } from 'url';
 
+import { applyAgentsField, syncPluginAgents } from './claude-agents.mjs';
+
 const root = resolve(fileURLToPath(import.meta.url), '../..');
 
 const SKIP = new Set([
@@ -40,13 +42,26 @@ for (const dir of pluginDirs) {
   }
 }
 
-// Remove .claude-plugin/ for plugins deleted upstream
+// Point each manifest at Claude Code copies of agents that use Cursor-only frontmatter
+for (const dir of pluginDirs) {
+  const manifestPath = join(root, dir, '.claude-plugin', 'plugin.json');
+  const manifest = readJSON(manifestPath);
+  const next = applyAgentsField(manifest, syncPluginAgents(join(root, dir)));
+  if (JSON.stringify(next) !== JSON.stringify(manifest)) {
+    writeJSON(manifestPath, next);
+    console.log(`  ~ ${dir}/.claude-plugin/plugin.json (agents)`);
+  }
+}
+
+// Remove .claude-plugin/ for plugins deleted upstream: the folder holds nothing else. A folder
+// with other content is a Claude-native plugin upstream ships, so leave it alone.
 for (const name of readdirSync(root)) {
   if (SKIP.has(name) || name.startsWith('.') || pluginDirSet.has(name)) continue;
   const full = join(root, name);
   if (!existsSync(full) || !statSync(full).isDirectory()) continue;
   const claudeDir = join(full, '.claude-plugin');
-  if (existsSync(join(claudeDir, 'plugin.json'))) {
+  const onlyClaudeDir = readdirSync(full).every(entry => entry === '.claude-plugin');
+  if (onlyClaudeDir && existsSync(join(claudeDir, 'plugin.json'))) {
     rmSync(claudeDir, { recursive: true });
     console.log(`  - ${name}/.claude-plugin/`);
     removed++;

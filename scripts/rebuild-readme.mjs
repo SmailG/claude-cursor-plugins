@@ -66,7 +66,9 @@ ${tableRows}
 
 ## What changed from upstream
 
-This fork adds a \`.claude-plugin/\` directory at the repo root and inside each plugin, containing the marketplace and plugin manifests required by Claude Code. No plugin logic or rules have been modified — the plugins behave identically to their upstream versions.
+This fork adds a \`.claude-plugin/\` directory at the repo root and inside each plugin, containing the marketplace and plugin manifests required by Claude Code. No plugin logic or rules have been modified.
+
+Upstream agents use Cursor-only frontmatter that Claude Code ignores, so \`scripts/sync-manifests.mjs\` generates Claude Code copies under \`<plugin>/.claude-plugin/agents/\` and lists every agent in the plugin manifest: \`readonly: true\` becomes \`disallowedTools: Edit, Write, NotebookEdit, Agent\`, \`is_background: true\` becomes \`background: true\`, \`model: fast\` becomes \`haiku\`, an \`[effort=…]\` suffix becomes \`effort:\`, and a non-Claude model is dropped. A read-only agent keeps Bash, which can still write files. The upstream agent files stay untouched, and a value the converter cannot read fails the sync instead of shipping a writable agent.
 
 ## Keeping up to date
 

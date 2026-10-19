@@ -4,5 +4,8 @@
   "author": {
     "name": "Cursor",
     "email": "plugins@cursor.com"
-  }
+  },
+  "agents": [
+    "./.claude-plugin/agents/advisor-subagent.md"
+  ]
 }

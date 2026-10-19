@@ -1,5 +1,14 @@
 {
   "name": "agent-compatibility",
   "description": "CLI-backed repo compatibility scans plus Cursor agents that audit startup, validation, and docs against reality.",
-  "author": { "name": "Cursor", "email": "plugins@cursor.com" }
+  "author": {
+    "name": "Cursor",
+    "email": "plugins@cursor.com"
+  },
+  "agents": [
+    "./.claude-plugin/agents/compatibility-scan-review.md",
+    "./.claude-plugin/agents/docs-reliability-review.md",
+    "./.claude-plugin/agents/startup-review.md",
+    "./.claude-plugin/agents/validation-review.md"
+  ]
 }
