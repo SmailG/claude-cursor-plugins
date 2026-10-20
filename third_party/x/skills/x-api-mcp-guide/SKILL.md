@@ -16,7 +16,12 @@ description: >-
   Scheduled X calls use schedule_call, list_scheduled_calls, get_scheduled_call,
   update_scheduled_call, cancel_scheduled_call, and respond_to_scheduled_call.
   Missing those tools or calls.read/calls.write while other X tools work:
-  reconnect the X plugin. Estimate every X call and confirm before anything expensive.
+  reconnect the X plugin. Livestreams (stream sources, broadcasts, scheduled
+  broadcasts, chat moderators and mutes) use list_sources, create_source,
+  list_broadcasts, create_scheduled_broadcast and the other tools in the
+  Livestreams section. Missing those tools or broadcast.read/broadcast.write
+  while other X tools work: reconnect the X plugin. Going live right now is not
+  supported. Estimate every X call and confirm before anything expensive.
 ---
 # X MCP guide
 
@@ -101,6 +106,7 @@ Once tools exist and `{credits}` is cached, send this once. Adapt the wording to
 > - **Bookmarks** — list, add, and remove bookmarks, and organize them into folders
 > - **Chat** — read and reply to X Chat, and list, open, or accept message requests (needs a Chat PIN via secret-request, not pasted here). Posting tweets is not supported.
 > - **Calls** — list the X calls on your calendar, schedule or change one, and RSVP to an invitation
+> - **Livestreams** — your stream sources and broadcasts, schedule a broadcast, and manage chat moderators and mutes. Going live right now isn't supported.
 >
 > You have about $X.XX in credits.
 >
@@ -141,6 +147,8 @@ Do **not** treat `get_usage_credits` not found as #2 by itself. If other `user-X
 Missing **Chat** tools (`get_chat_conversations`, `send_chat_message`, …) while timeline/search/`get_users_me` work is **not** #2. That is [X Chat scopes](#x-chat-scopes) — reconnect for `dm.read` / `dm.write`.
 
 Missing **call** tools (`schedule_call`, `list_scheduled_calls`, …) while other X tools work is **not** #2. That is [X call scopes](#x-call-scopes) — reconnect for `calls.read` / `calls.write`.
+
+Missing **livestream** tools (`list_sources`, `create_scheduled_broadcast`, …) while other X tools work is **not** #2. That is [Livestream scopes](#livestream-scopes) — reconnect for `broadcast.read` / `broadcast.write`.
 
 **When (fallback):** `client-forbidden`; `user-not-enrolled`; `client-not-enrolled`; Client Forbidden; 403 on timeline / mentions / search / bookmarks after Connect.
 
@@ -218,6 +226,16 @@ Do not tell them to create a Project or App. Do not ask for a Bearer token. Afte
 
 Do not tell them to create a Project or App. Do not ask for a Bearer token. After reconnect, follow [Scheduled calls](#scheduled-calls).
 
+### Livestream scopes
+
+**When:** the user wants their stream sources, broadcasts, scheduled broadcasts, chat moderators, or chat mutes, other X tools work, but the livestream tools are missing or a call 403s for `broadcast.read` / `broadcast.write`.
+
+**Say:**
+
+> Livestreams need an extra sign-in. Reconnect the X plugin in this chat and approve access to your broadcasts. Then I'll retry. Don't paste keys, tokens, or stream keys.
+
+Do not tell them to create a Project or App. Do not ask for a Bearer token. After reconnect, follow [Livestreams](#livestreams).
+
 ## Other errors
 
 `not-authorized-for-resource` (private account they don't own): stop. Their own timeline/bookmarks: probe current user, retry once with that id.
@@ -260,7 +278,8 @@ When X calls are required this session: confirm tools exist, then `get_users_me`
 
 | Result                         | Next |
 | ------------------------------ | ---- |
-| Tools missing / not found      | [Error 2](#2-account-not-ready). Stop. |
+| Every X tool missing / not found | [Error 2](#2-account-not-ready). Stop. |
+| Only Chat, call, or livestream tools missing | Not error 2. [X Chat scopes](#x-chat-scopes), [X call scopes](#x-call-scopes), or [Livestream scopes](#livestream-scopes) — reconnect. |
 | Success                        | Cache `{me}` and `{credits}`. If `{credits}` is ~$0, use the On connect $0 copy — not error 3. Otherwise do their ask if it fits. Prefer `{me}` for timeline, mentions, bookmarks. |
 | Error 1                        | Quoted line only. Do not search. |
 | Error 2                        | Quoted line only. Do not search. |
@@ -276,6 +295,8 @@ Every X call can charge the user. Estimate the cost **before** calling. Read [re
 X Chat is free for this plugin. X Chat reads (`GET /2/chat/*`) and public key lookups are free everywhere, in Grok Bot and in Cursor. Do not estimate a cost, ask for confirmation, or check or require credits for `get_chat_conversations`, `get_chat_message_requests`, `get_chat_message_request`, `accept_chat_message_request`, `get_chat_conversation`, `get_chat_conversation_events`, public key lookups, `add_conversation_keys`, `send_chat_message`, typing indicators, or marking a conversation read.
 
 Scheduled X calls are free, including on Grok Bot. Do not estimate a cost, ask for confirmation, or check or require credits for `list_scheduled_calls`, `get_scheduled_call`, `schedule_call`, `update_scheduled_call`, `cancel_scheduled_call`, or `respond_to_scheduled_call`.
+
+Livestream tools are free. Do not estimate a cost or check or require credits for any tool in [Livestreams](#livestreams). Writes still need the owner to have asked (see that section).
 
 The live payload:
 
@@ -358,6 +379,7 @@ When they ask what they can do, re-fetch `{credits}`, say how many they have lef
 - One post: parse status id, lookup.
 - X Chat / inbox / DMs / message requests: [X Chat](#x-chat). Clone the helper if missing — do not ask the user to find it. Use a [saved key](#saved-key) or secret-request the Chat PIN only. Owner must approve outbound text unless they already said to send or reply. Accept a request only when they said to accept.
 - X calls on the calendar: [Scheduled calls](#scheduled-calls). List or open when they ask. Schedule, update, cancel, or RSVP only when they asked.
+- Livestreams ("schedule a livestream tomorrow at 3pm", "show me my livestreams", "make @xyz a moderator", "mute @xyz in my stream"): [Livestreams](#livestreams). List or open when they ask. Create, change, delete, go live, moderate, or mute only when they asked.
 
 ## Scheduled calls
 
@@ -377,6 +399,54 @@ List or open a call when they ask. Schedule, update, cancel, or RSVP only when t
 `id` is the scheduled-call id from a list or schedule result. On a recurring call, pass `scope` and `occurrence_start_time` only when they said which occurrences: one, this one and the ones after it, or all of them. Default is all.
 
 If the tools are missing or a call returns 403 for `calls.read` / `calls.write`, that is [X call scopes](#x-call-scopes). Reconnect. Do not create a Project or App.
+
+## Livestreams
+
+These tools manage the owner's X livestreams: stream sources (RTMP/RTMPS ingest points for their encoder), broadcasts, scheduled broadcasts, and their broadcast chat's moderators and mutes. They are not X Calls and not X Chat.
+
+| Tool | Does | Scope |
+| --- | --- | --- |
+| `list_sources` | The owner's stream sources | `broadcast.read` |
+| `get_source` | One source by `id`; `is_stream_active` says whether the encoder is pushing video | `broadcast.read` |
+| `create_source` | New source. `name` and `region` | `broadcast.write` |
+| `update_source` | Rename a source. `id` and `name` | `broadcast.write` |
+| `delete_source` | Delete a source by `id` | `broadcast.write` |
+| `list_broadcasts` | The owner's broadcasts (live and past) | `broadcast.read` |
+| `get_broadcast` | One broadcast by `id`, with state and viewer counts | `broadcast.read` |
+| `list_scheduled_broadcasts` | The owner's scheduled broadcasts | `broadcast.read` |
+| `get_scheduled_broadcast` | One scheduled broadcast by `id` | `broadcast.read` |
+| `create_scheduled_broadcast` | Schedule a broadcast on a source | `broadcast.write` |
+| `update_scheduled_broadcast` | Change a scheduled broadcast | `broadcast.write` |
+| `delete_scheduled_broadcast` | Cancel a scheduled broadcast by `id` | `broadcast.write` |
+| `go_live_scheduled_broadcast` | Start a schedule created with `manual_publish: true` | `broadcast.write` |
+| `get_chat_moderators` | The owner's chat moderators | `broadcast.read` |
+| `add_chat_moderator` | Make `user_id` a moderator | `broadcast.write` |
+| `remove_chat_moderator` | Remove a moderator by `user_id` | `broadcast.write` |
+| `mute_broadcast_chat_user` | Mute `user_id` in a running broadcast's chat (`id`) | `broadcast.write` |
+| `unmute_broadcast_chat_user` | Unmute `user_id` in that chat | `broadcast.write` |
+
+List or open when they ask. Create, change, delete, go live, add or remove a moderator, or mute only when they asked, and repeat what will change before you do it.
+
+**Going live right now is not supported.** There is no tool to start, publish, or end an immediate broadcast. If they ask to go live now, say so plainly. They can schedule a broadcast instead: it starts on its own at its start time while their encoder streams to the source, or with `go_live_scheduled_broadcast` if they scheduled it with `manual_publish: true`.
+
+**Schedule a livestream** ("tomorrow at 3pm"):
+
+1. `list_sources`. If there is more than one, ask which. If there are none, offer `create_source` (a `name`, and a `region` from `us-east-1`, `us-east-2`, `us-west-1`, `us-west-2`, `ca-central-1`, `sa-east-1`, `eu-west-1`, `eu-west-3`, `eu-central-1`, `ap-south-1`, `ap-southeast-1`, `ap-southeast-2`, `ap-northeast-1`, or `ap-northeast-2`; pick the one closest to them).
+2. Work out the start time in the owner's timezone. If you don't know it, ask. Repeat the date, time, and timezone back.
+3. `create_scheduled_broadcast` with `source_id` (the source's `id`), `scheduled_start_ms` (milliseconds since the Unix epoch, as a string), and `title` if they gave one. Leave out `scheduled_end_ms` for an open-ended broadcast.
+4. Reply with the title and time, and `https://x.com/i/broadcasts/{broadcast_id}`.
+
+**Ids:** `get_scheduled_broadcast`, `update_scheduled_broadcast`, `delete_scheduled_broadcast`, `go_live_scheduled_broadcast`, `get_broadcast`, and the mute tools take the alphanumeric `broadcast_id` as `id`. `update_scheduled_broadcast` also needs the numeric `scheduled_broadcast_id` and replaces the whole schedule: `get_scheduled_broadcast` first and send every field you want to keep. Moderator and mute tools take a numeric `user_id`: resolve a handle with `get_users_by_username`.
+
+**Moderators** apply to all of the owner's broadcasts (at most 20). **Mutes** work only while the broadcast is running; pass `end_at_ms` for a timeout.
+
+**Stream keys are secrets.** A source's `id` is also its stream key (`rtmp_stream_key`): anyone with it can stream as the owner. Don't show the full `id`, `rtmp_stream_key`, or ingest URLs in chat unless they asked to set up an encoder, and never post them. Refer to sources by `name`. Deleting a source breaks any encoder still using its key.
+
+`create_source` is not idempotent. If it fails or times out, `list_sources` before trying again so you don't create a duplicate.
+
+`list_broadcasts` 403s with "requires X Premium or more than 1,000 followers" for accounts that can't stream. Say that plainly; it is not credits or scopes. Going live on a schedule needs the same.
+
+If the tools are missing or a call returns 403 for `broadcast.read` / `broadcast.write`, that is [Livestream scopes](#livestream-scopes). Reconnect. Do not create a Project or App.
 
 ## X Chat
 
@@ -600,6 +670,10 @@ If `add_conversation_keys` returns `UNAUTHORIZED_REQUESTING_USER` or similar: yo
 - Treat missing Chat tools as “create a Project and App.” If other X tools work, that is [X Chat scopes](#x-chat-scopes) — reconnect.
 - Treat missing call tools as “create a Project and App.” If other X tools work, that is [X call scopes](#x-call-scopes) — reconnect.
 - Schedule, update, cancel, or RSVP to an X call unless the owner asked. Do not use the X Chat helper for calls.
+- Treat missing livestream tools as "create a Project and App." If other X tools work, that is [Livestream scopes](#livestream-scopes) — reconnect.
+- Say you can go live right now, or try to. Only `go_live_scheduled_broadcast`, and only on a schedule created with `manual_publish: true`.
+- Show or post a source's full `id`, stream key, or ingest URLs unless the owner asked to set up an encoder.
+- Create, change, or delete a source or scheduled broadcast, or add, remove, mute, or unmute a user, unless the owner asked.
 - Wait for the user to name `xchat_lite`, the helper repo, or a second X Chat skill. Clone it yourself.
 - Treat a reply as accepting a message request. Accept only with `accept_chat_message_request`, and only when the owner said to accept.
 - Call `get_chat_message_request` while scanning requests. That marks them delivered. List with `get_chat_message_requests`.

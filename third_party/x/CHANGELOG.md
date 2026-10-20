@@ -2,6 +2,15 @@
 
 All notable changes to this plugin will be documented here.
 
+## 2.8.0 — Livestreams
+
+- Requested `broadcast.read` and `broadcast.write` so agents can manage the owner's X livestreams on `https://api.x.com/mcp`.
+- The guide covers stream sources (`list_sources`, `get_source`, `create_source`, `update_source`, `delete_source`), broadcasts (`list_broadcasts`, `get_broadcast`), scheduled broadcasts (`list_scheduled_broadcasts`, `get_scheduled_broadcast`, `create_scheduled_broadcast`, `update_scheduled_broadcast`, `delete_scheduled_broadcast`, `go_live_scheduled_broadcast`), chat moderators (`get_chat_moderators`, `add_chat_moderator`, `remove_chat_moderator`), and chat mutes (`mute_broadcast_chat_user`, `unmute_broadcast_chat_user`).
+- Scheduling a livestream takes a source from `list_sources` and a start time in the owner's timezone. Writes only when the owner asked. A source's `id` is its stream key, so it stays out of the chat.
+- Going live right now (starting, publishing, or ending an immediate broadcast) is not supported. A scheduled broadcast starts on its own, or with `go_live_scheduled_broadcast` when scheduled with `manual_publish: true`.
+- Livestream tools are free. Missing livestream tools while other X tools work means reconnect, not a new Project or App.
+- Existing installs need to sign in to X again to pick up the new scopes.
+
 ## 2.7.0 — Scheduled X calls
 
 - Requested `calls.read` and `calls.write` so agents can list, schedule, update, cancel, and RSVP to X calls on `https://api.x.com/mcp`.
