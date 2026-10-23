@@ -409,6 +409,11 @@
       "description": "Find and verify emails, discover companies, and save leads."
     },
     {
+      "name": "stable",
+      "source": "third_party/stable",
+      "description": "Find mail, read scanned documents, and call Stable API endpoints."
+    },
+    {
       "name": "gamma",
       "source": "third_party/gamma",
       "description": "Generate presentations, documents, and webpages."
