@@ -2,6 +2,13 @@
 
 All notable changes to this plugin will be documented here.
 
+## 1.0.4
+
+- The setup skill matches the current connection: one Tailscale row with a slot per tailnet, several tailnets at once, company tailnets enabled at cursor.com and limited with `custom:grokbot` postures, and personal tailnets via one-click Connect or `tag:grokbot`.
+- Drops the single-tailnet flow and the "confirm it's my Tailscale login" step. Grok Bot asks Allow/Deny before removing a device, adding a tailnet, or changing the default.
+- Covers `http://` servers, one live personal tailnet at a time, Slack Connect refusals, and troubleshooting for expired devices, the app-allow and plan sign-in errors, public DNS names that point at Tailscale addresses, shared-in devices, and internal certificates.
+- The plugin description covers one-click Connect, `tag:grokbot`, and the company tailnet.
+
 ## 1.0.2
 
 - The setup skill covers the company tailnet end to end: the admin's **Company tailnet** steps, locking member devices down with `custom:grokbot` postures, and granting MCP hosts to the groups that already reach them.

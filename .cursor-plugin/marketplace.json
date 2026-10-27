@@ -637,6 +637,21 @@
       "name": "vanta",
       "source": "third_party/vanta",
       "description": "Query and remediate compliance tests, controls, frameworks, risks, and vulnerabilities in Vanta."
+    },
+    {
+      "name": "ringcentral-phone",
+      "source": "third_party/ringcentral-phone",
+      "description": "Read call activity, AI call notes, SMS, voicemail, and fax, and send SMS."
+    },
+    {
+      "name": "ringcentral-chat",
+      "source": "third_party/ringcentral-chat",
+      "description": "Read team chats and posts, send messages, and manage teams, tasks, and notes."
+    },
+    {
+      "name": "servicenow",
+      "source": "third_party/servicenow",
+      "description": "Call the tools your admin publishes on a ServiceNow instance."
     }
   ]
 }
